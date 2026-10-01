@@ -22,6 +22,10 @@ that enables Tonk's service-worker domain in the embedded web view.
 2. Send a message to Robin. Use the person button to edit the name and personality.
 3. Quit and reopen to continue the same conversation.
 4. The right pane runs Tonk. Use the toolbar to show or hide it.
+5. **Sign in to Tonk** opens the default browser for passkey approval and returns
+   a device grant to the embedded worker. Account sign-in, space-list hydration,
+   and persistence after reopening are verified; see
+   the current plan.
 
 The CLI is discovered at `/opt/homebrew/bin/codex`, `/usr/local/bin/codex`, or
 `~/.nix-profile/bin/codex`. To select another binary, launch the bundled
@@ -42,8 +46,8 @@ declined. Tonk CLI tools and the shared-space round trip are the next increment.
 
 Tonk assets load from `https://tonk.network`; they are not bundled from the
 neighboring Rust checkout. The embedded web profile is separate from Safari
-and from the CLI's replica and identity. Tonk account/passkey flows, CLI sync,
-offline startup, and collaboration are not part of the current verification.
+and from the CLI's replica and identity. Browser-assisted Tonk sign-in is verified. In-app passkey ceremonies, CLI sync,
+offline startup, and collaboration remain unverified.
 
 ## Local data
 

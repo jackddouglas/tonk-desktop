@@ -177,7 +177,7 @@ struct ContentView: View {
           runtime.load()
         } label: {
           Image(systemName: "arrow.clockwise")
-        }.help("Reload Tonk").accessibilityLabel("Reload Tonk")
+        }.help("Reload Tonk").accessibilityLabel("Reload Tonk").disabled(runtime.signInPending)
         Button {
           NSWorkspace.shared.open(RuntimeLocation.home)
         } label: {
@@ -185,6 +185,26 @@ struct ContentView: View {
         }
         .help("Open Tonk in your browser").accessibilityLabel("Open Tonk in browser")
       }.padding(20)
+      if runtime.signInPending {
+        HStack {
+          ProgressView().controlSize(.small)
+          Text(
+            runtime.attachingAccount
+              ? "Connecting your Tonk account…" : "Finish signing in in your browser"
+          )
+          .font(.callout)
+          Spacer()
+          Button("Cancel") { runtime.cancelSignIn() }.disabled(runtime.attachingAccount)
+        }.padding(.horizontal, 20).padding(.bottom, 12)
+      } else {
+        HStack {
+          if let message = runtime.accountMessage {
+            Text(message).font(.caption).textSelection(.enabled)
+          }
+          Spacer()
+          Button("Sign in to Tonk") { Task { await runtime.signIn() } }.disabled(runtime.loading)
+        }.padding(.horizontal, 20).padding(.bottom, 12)
+      }
       Divider()
       ZStack {
         RuntimeView(model: runtime)

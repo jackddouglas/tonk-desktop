@@ -8,6 +8,10 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   @Published var loading = true
   @Published var error: String?
   @Published var ready = false
+  @Published var signInPending = false
+  @Published var attachingAccount = false
+  @Published var accountMessage: String?
+  var callback: BrowserCallback?
   let webView: WKWebView
 
   override init() {
