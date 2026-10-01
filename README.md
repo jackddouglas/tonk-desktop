@@ -15,6 +15,14 @@ bash scripts/build-app.sh
 open ".build/Tonk Town.app"
 ```
 
+Local builds use the single available **Apple Development** signing identity.
+For multiple identities, set `TONK_TOWN_SIGN_IDENTITY` to the desired certificate
+fingerprint. A stable signature lets macOS retain WebKit Keychain authorization
+across rebuilds. Switching from an older ad-hoc build can still require one
+approval. Explicit `TONK_TOWN_SIGN_IDENTITY=-` builds remain available but may
+prompt again after executable changes. No Keychain items or access rules are
+changed by the build script. See [Apple's signing identity explanation](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
+
 Use the app bundle: `swift run` does not include the Info.plist configuration
 that enables Tonk's service-worker domain in the embedded web view.
 
