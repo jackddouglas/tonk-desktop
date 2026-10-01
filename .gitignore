@@ -1,0 +1,25 @@
+.build/
+.swiftpm/
+.DS_Store
+artifacts/
+
+# Local agent working files
+/plans/
+.agents/
+.agent/
+.codex/
+.claude/
+.cursor/
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.windsurfrules
+.aider*
+.mcp.json
+/.github/copilot-instructions.md
+/.github/instructions/
+/.github/prompts/
+/.github/agents/
+/.github/skills/
