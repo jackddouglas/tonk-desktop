@@ -13,6 +13,7 @@ struct TonkTownApp: App {
         .frame(minWidth: 850, minHeight: 580)
         .task {
           delegate.model = model
+          model.runtime = runtime
           runtime.load()
           await model.connect()
           if ProcessInfo.processInfo.arguments.contains("--smoke-test") {

@@ -13,11 +13,14 @@ final class HarnessModel: ObservableObject {
   @Published var activity = ""
   @Published var error: String?
   @Published var loginPending = false
+  weak var runtime: RuntimeModel?
+  @Published var toolActivity: [String] = []
   let client = AppServerClient()
   let root: URL
   let store: StateStore
   private var loginID: String?
   @Published private var turnID: String?
+  var activeTurnID: String? { turnID }
   private var resumed = false
   private var saveTask: Task<Void, Never>?
   private var storageAvailable = true
@@ -35,6 +38,12 @@ final class HarnessModel: ObservableObject {
       storageAvailable = false
       self.error =
         "Could not read your saved conversation. It has been preserved at \(root.path)/state.json. \(error.localizedDescription)"
+    }
+    client.onToolCall = { [weak self] params in
+      guard let self else {
+        return SpaceTools.response("The conversation is closed.", success: false)
+      }
+      return await self.callSpaceTool(params)
     }
     client.onNotification = { [weak self] method, params in self?.receive(method, params) }
     client.onDisconnect = { [weak self] message in
@@ -154,7 +163,7 @@ final class HarnessModel: ObservableObject {
     do {
       var parameters: [String: JSONValue] = [
         "cwd": .string(root.appendingPathComponent("Workspace").path),
-        "developerInstructions": .string(saved.profile.instructions),
+        "developerInstructions": .string(saved.profile.instructions + spaceInstructions),
         "sandbox": .string("read-only"), "approvalPolicy": .string("never"),
       ]
       if let threadID = saved.conversation.threadID {
@@ -164,6 +173,7 @@ final class HarnessModel: ObservableObject {
           resumed = true
         }
       } else {
+        if saved.conversation.space != nil { parameters["dynamicTools"] = SpaceTools.definitions }
         let result = try await client.request("thread/start", params: .object(parameters))
         guard let threadID = result["thread"]["id"].string else {
           throw HarnessError.message("The agent did not create a conversation.")
@@ -198,6 +208,7 @@ final class HarnessModel: ObservableObject {
   }
 
   func stopTurn() async {
+    client.cancelTools()
     guard let threadID = saved.conversation.threadID, let turnID else { return }
     activity = "Stopping"
     do {
@@ -223,6 +234,7 @@ final class HarnessModel: ObservableObject {
         try StateStore(directory: archive).save(saved)
       }
       saved.conversation = Conversation()
+      toolActivity = []
       resumed = false
       error = nil
       persist()

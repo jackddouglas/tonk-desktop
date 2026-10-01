@@ -4,6 +4,8 @@ import Foundation
 @MainActor
 public final class AppServerClient {
   public var onNotification: ((String, JSONValue) -> Void)?
+  public var onToolCall: ((JSONValue) async -> JSONValue)?
+  private var toolTasks: [UUID: Task<Void, Never>] = [:]
   public var onDisconnect: ((String) -> Void)?
   private var process: Process?
   private var input: FileHandle?
@@ -28,7 +30,7 @@ public final class AppServerClient {
     child.arguments = [
       "app-server", "--stdio",
       "-c", "features.shell_tool=false", "-c", "features.multi_agent=false",
-      "-c", "features.code_mode_host=false", "-c", "web_search=\"disabled\"",
+      "-c", "web_search=\"disabled\"",
       "-c", "cli_auth_credentials_store=\"file\"",
     ]
     var environment = ProcessInfo.processInfo.environment
@@ -68,10 +70,11 @@ public final class AppServerClient {
       _ = try await request(
         "initialize",
         params: .object([
+          "capabilities": .object(["experimentalApi": .bool(true)]),
           "clientInfo": .object([
             "name": .string("tonk_town"),
             "title": .string("Tonk Town"), "version": .string("0.1.0"),
-          ])
+          ]),
         ]))
       try write(.object(["method": .string("initialized")]))
     } catch {
@@ -108,11 +111,17 @@ public final class AppServerClient {
 
   public func stop() {
     generation = UUID()
+    cancelTools()
     try? input?.close()
     input = nil
     if process?.isRunning == true { process?.terminate() }
     process = nil
     failPending("Agent connection closed.")
+  }
+
+  public func cancelTools() {
+    for task in toolTasks.values { task.cancel() }
+    toolTasks.removeAll()
   }
 
   private func write(_ value: JSONValue) throws {
@@ -128,7 +137,19 @@ public final class AppServerClient {
       for message in try framer.append(data) {
         if let method = message["method"].string {
           if message["id"] != .null {
-            // This increment has no native tools or approval UI. Never auto-approve.
+            if method == "item/tool/call", let handler = onToolCall {
+              let taskID = UUID()
+              let requestID = message["id"]
+              toolTasks[taskID] = Task { [weak self] in
+                let result = await handler(message["params"])
+                guard let self else { return }
+                self.toolTasks.removeValue(forKey: taskID)
+                guard !Task.isCancelled, token == self.generation else { return }
+                try? self.write(.object(["id": requestID, "result": result]))
+              }
+              continue
+            }
+            // Native tools do not grant shell or file-change approvals.
             if method == "item/commandExecution/requestApproval"
               || method == "item/fileChange/requestApproval"
             {
@@ -177,6 +198,8 @@ public final class AppServerClient {
 
   private func didExit(generation token: UUID, status: Int32) {
     guard token == generation else { return }
+    cancelTools()
+    generation = UUID()
     input = nil
     process = nil
     let message = "Agent process exited (\(status)). Reconnect to continue."

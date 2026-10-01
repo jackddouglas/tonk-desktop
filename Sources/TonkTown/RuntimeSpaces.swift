@@ -35,15 +35,16 @@ extension RuntimeModel {
           terms: {this: variable('this'), subject: variable('subject'), name: variable('name')}
         });
         if (!Array.isArray(rows)) throw new Error('Invalid space catalog response.');
-        return {spaces: rows.map(row => ({subject: row.fields.subject, name: row.fields.name || null}))};
+        return {branch, spaces: rows.map(row => ({subject: row.fields.subject, name: row.fields.name || null}))};
         """)
       guard let rows = result["spaces"] else {
         throw CallbackError("The runtime returned no space catalog.")
       }
       spaces = try TonkSpace.decodeCatalog(JSONSerialization.data(withJSONObject: rows))
-      if let selectedSpace, !spaces.contains(where: { $0.id == selectedSpace.id }) {
-        self.selectedSpace = nil
+      if let selectedSpace {
+        self.selectedSpace = spaces.first(where: { $0.id == selectedSpace.id })
       }
+      catalogBranch = result["branch"] as? String
       catalogLoaded = true
     } catch {
       catalogError =

@@ -27,6 +27,23 @@ enum SmokeTest {
     if let error = runtime.error { report["runtimeError"] = error }
     if let error = model.error { report["agentError"] = error }
     let arguments = ProcessInfo.processInfo.arguments
+    if let index = arguments.firstIndex(of: "--inspect-space"),
+      arguments.indices.contains(index + 1)
+    {
+      do {
+        guard let space = runtime.spaces.first(where: { $0.id == arguments[index + 1] }) else {
+          throw NSError(
+            domain: "SmokeTest", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Requested space is not in the catalog"])
+        }
+        report["spaceInspection"] = try await runtime.performSpaceTool(space: space, name: nil)
+      } catch {
+        report["passed"] = false
+        report["inspectionError"] =
+          (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String
+          ?? error.localizedDescription
+      }
+    }
     if let index = arguments.firstIndex(of: "--report"), arguments.indices.contains(index + 1) {
       let target = URL(fileURLWithPath: arguments[index + 1])
       if let data = try? JSONSerialization.data(

@@ -26,7 +26,10 @@ that enables Tonk's service-worker domain in the embedded web view.
 5. **Sign in to Tonk** opens the default browser for passkey approval and returns
    a device grant to the embedded worker. Account sign-in, space-list hydration,
    and persistence after reopening are verified; see
-   the current plan.
+   the authentication plan.
+6. Open a space and click **Use for chat** to start a conversation attached to it.
+   Ask Robin to inspect it or rename it. The previous conversation is archived;
+   browsing another space does not change the attachment.
 
 The CLI is discovered at `/opt/homebrew/bin/codex`, `/usr/local/bin/codex`, or
 `~/.nix-profile/bin/codex`. To select another binary, launch the bundled
@@ -41,10 +44,15 @@ executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 - Browser ChatGPT login and cancellation, with an isolated Codex profile.
 - Interactive hosted Tonk runtime with persistent web storage and reload.
 
-The agent cannot yet inspect or modify the Tonk pane. Shell tools, web search,
-and multi-agent execution are disabled; unsupported server requests are
-declined. Native space navigation is implemented; Tonk CLI tools and the
-shared-space round trip are next.
+Attached conversations expose two native tools: inspect the space identity, name
+and branch names, and rename it with worker readback. The native app fixes the
+target; this is an application boundary using the signed-in worker, not a
+separately delegated CLI identity. Tool activity is visible in the conversation.
+Stop cancels pending responses, but cannot undo a write already submitted.
+
+Shell tools, web search, and multi-agent execution are disabled; unsupported
+server requests are declined. Content/schema introspection, building tools, CLI
+sync, and shared collaboration remain future work.
 
 Tonk assets load from `https://tonk.network`; they are not bundled from the
 neighboring Rust checkout. The embedded web profile is separate from Safari
@@ -84,7 +92,9 @@ The native smoke test opens the built app with an isolated, signed-out agent
 profile. It checks app-server initialization plus an active Tonk service worker,
 JSON health response, mounted Tonk iframe, and loaded native space catalog. Reports stay in ignored
 `artifacts/smoke.*/report.json`. WebKit data remains the app's regular web store.
-No model call or credential is needed for this test.
+No model call or credential is needed for this test. Pass `--inspect-space <DID>`
+to additionally read an existing space through the same native tool adapter;
+this uses the existing Tonk web session and does not mutate the space.
 
 Manual integration checks: sign in, receive a real response, stop a reply,
 reopen and ask about the previous conversation, edit the personality, and

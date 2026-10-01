@@ -84,6 +84,13 @@ final class HarnessCoreTests: XCTestCase {
             continue
         if method == 'test/timeout':
             continue
+        if method == 'test/tool':
+            print(json.dumps({'id':'native-tool','method':'item/tool/call','params':{'tool':'tonk_space_info','arguments':{}}}), flush=True)
+            print(json.dumps({'id':request['id'],'result':{}}), flush=True)
+            continue
+        if request.get('id') == 'native-tool':
+            print(json.dumps({'method':'test/tool-result','params':request['result']}), flush=True)
+            continue
         if method == 'test/unsupported':
             print(json.dumps({'id':'server-request','method':'unknown/tool','params':{}}), flush=True)
             continue
@@ -114,6 +121,20 @@ final class HarnessCoreTests: XCTestCase {
     }
     Task { _ = try? await client.request("test/unsupported", timeout: 0.2) }
     await fulfillment(of: [denied], timeout: 2)
+    let toolResult = expectation(description: "Native tool response crosses the process protocol")
+    client.onToolCall = { params in
+      XCTAssertEqual(params["tool"].string, "tonk_space_info")
+      return SpaceTools.response("worker result", success: true)
+    }
+    client.onNotification = { method, params in
+      if method == "test/tool-result" {
+        XCTAssertEqual(params["success"].bool, true)
+        XCTAssertEqual(params["contentItems"].array.first?["text"].string, "worker result")
+        toolResult.fulfill()
+      }
+    }
+    _ = try await client.request("test/tool")
+    await fulfillment(of: [toolResult], timeout: 2)
     client.stop()
     do {
       _ = try await client.request("test/echo")

@@ -17,6 +17,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   @Published var catalogLoading = false
   @Published var catalogLoaded = false
   @Published var catalogError: String?
+  var catalogBranch: String?
   var catalogTask: Task<Void, Never>?
   var callback: BrowserCallback?
   let webView: WKWebView

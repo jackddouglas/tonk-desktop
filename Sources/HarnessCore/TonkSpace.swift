@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TonkSpace: Identifiable, Decodable, Equatable {
+public struct TonkSpace: Identifiable, Codable, Equatable, Sendable {
   public let subject: String
   public let name: String?
   public var id: String { subject }

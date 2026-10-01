@@ -9,7 +9,7 @@ fi
 mkdir -p artifacts
 run_dir=$(mktemp -d "$PWD/artifacts/smoke.XXXXXX")
 report="$run_dir/report.json"
-open -n "$app" --args --smoke-test --data-dir "$run_dir/data" --report "$report"
+open -n "$app" --args --smoke-test --data-dir "$run_dir/data" --report "$report" "$@"
 for ((attempt = 0; attempt < 80; attempt++)); do
     if [[ -f "$report" ]]; then
         cat "$report"

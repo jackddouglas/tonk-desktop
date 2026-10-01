@@ -67,6 +67,14 @@ struct ContentView: View {
         }
       }.padding(20)
       Divider()
+      if let space = model.saved.conversation.space {
+        HStack {
+          Image(systemName: "link")
+          Text(
+            "Attached: \(runtime.spaces.first(where: { $0.id == space.id })?.title ?? space.title)")
+          Spacer()
+        }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 12)
+      }
 
       ScrollViewReader { reader in
         ScrollView {
@@ -95,6 +103,13 @@ struct ContentView: View {
               .background(
                 message.role == "user" ? Color.primary.opacity(0.045) : .clear,
                 in: RoundedRectangle(cornerRadius: 14))
+            }
+            if !model.toolActivity.isEmpty {
+              DisclosureGroup("Space activity (\(model.toolActivity.count))") {
+                ForEach(Array(model.toolActivity.enumerated()), id: \.offset) { _, entry in
+                  Text(entry).font(.caption).foregroundStyle(.secondary)
+                }
+              }.font(.caption)
             }
             if model.busy {
               HStack(spacing: 8) {
@@ -174,6 +189,13 @@ struct ContentView: View {
           }
         }
         Spacer()
+        if let space = runtime.selectedSpace {
+          Button("Use for chat") { model.attachSpace(space) }
+            .disabled(model.busy || model.saved.conversation.space?.id == space.id)
+            .help(
+              "Start a new conversation that can inspect and rename this space. The current conversation is archived."
+            )
+        }
         if runtime.loading { ProgressView().controlSize(.small) }
         Button {
           runtime.load()
