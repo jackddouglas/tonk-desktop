@@ -11,12 +11,21 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   @Published var signInPending = false
   @Published var attachingAccount = false
   @Published var accountMessage: String?
+  @Published var accountConnected = false
+  @Published var spaces: [TonkSpace] = []
+  @Published var selectedSpace: TonkSpace?
+  @Published var catalogLoading = false
+  @Published var catalogLoaded = false
+  @Published var catalogError: String?
+  var catalogTask: Task<Void, Never>?
   var callback: BrowserCallback?
   let webView: WKWebView
 
   override init() {
     let configuration = WKWebViewConfiguration()
     configuration.websiteDataStore = .default()
+    // The native picker can cover/detach this view while still querying its worker.
+    configuration.preferences.inactiveSchedulingPolicy = .none
     configuration.limitsNavigationsToAppBoundDomains = true
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
@@ -29,7 +38,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     loading = true
     error = nil
     ready = false
-    webView.load(URLRequest(url: RuntimeLocation.home))
+    webView.load(URLRequest(url: selectedSpace?.url ?? RuntimeLocation.home))
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -39,6 +48,21 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     loading = false
+    catalogTask?.cancel()
+    catalogTask = Task {
+      for _ in 0..<15 {
+        guard !Task.isCancelled else { return }
+        if let status = try? await probe(), status["health"] as? Bool == true {
+          await refreshSpaces()
+          if let account = try? await accountScript("return await api('/api/account');") {
+            accountConnected = account["status"] as? String == "registered"
+          }
+          return
+        }
+        try? await Task.sleep(for: .seconds(1))
+      }
+      if !Task.isCancelled { catalogError = "The Tonk worker is not ready. Reload to try again." }
+    }
   }
 
   func webView(

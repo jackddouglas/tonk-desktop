@@ -168,8 +168,10 @@ struct ContentView: View {
     VStack(spacing: 0) {
       HStack {
         VStack(alignment: .leading, spacing: 3) {
-          Text("Tonk").font(.headline)
-          Text("Your spaces").font(.caption).foregroundStyle(.secondary)
+          Text(runtime.selectedSpace?.title ?? "Your spaces").font(.headline).lineLimit(1)
+          if runtime.selectedSpace != nil {
+            Button("All spaces") { runtime.showSpaces() }.buttonStyle(.link)
+          }
         }
         Spacer()
         if runtime.loading { ProgressView().controlSize(.small) }
@@ -179,7 +181,7 @@ struct ContentView: View {
           Image(systemName: "arrow.clockwise")
         }.help("Reload Tonk").accessibilityLabel("Reload Tonk").disabled(runtime.signInPending)
         Button {
-          NSWorkspace.shared.open(RuntimeLocation.home)
+          NSWorkspace.shared.open(runtime.selectedSpace?.url ?? RuntimeLocation.home)
         } label: {
           Image(systemName: "arrow.up.right.square")
         }
@@ -202,12 +204,21 @@ struct ContentView: View {
             Text(message).font(.caption).textSelection(.enabled)
           }
           Spacer()
-          Button("Sign in to Tonk") { Task { await runtime.signIn() } }.disabled(runtime.loading)
+          if runtime.accountConnected {
+            Text("Tonk connected").font(.caption).foregroundStyle(.secondary)
+          } else {
+            Button("Sign in to Tonk") { Task { await runtime.signIn() } }.disabled(runtime.loading)
+          }
         }.padding(.horizontal, 20).padding(.bottom, 12)
       }
       Divider()
       ZStack {
         RuntimeView(model: runtime)
+          .allowsHitTesting(runtime.selectedSpace != nil)
+          .accessibilityHidden(runtime.selectedSpace == nil)
+        if runtime.selectedSpace == nil {
+          SpacePickerView(runtime: runtime)
+        }
         if let error = runtime.error {
           ContentUnavailableView {
             Label("Couldn’t open Tonk", systemImage: "network")

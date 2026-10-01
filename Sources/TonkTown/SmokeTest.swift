@@ -9,14 +9,21 @@ enum SmokeTest {
     for _ in 0..<40 {
       if let result = try? await runtime.probe() {
         lastProbe = result
-        if result["health"] as? Bool == true && result["mounted"] as? Bool == true { break }
+        if result["health"] as? Bool == true && result["mounted"] as? Bool == true
+          && runtime.catalogLoaded
+        {
+          break
+        }
       }
       try? await Task.sleep(for: .seconds(1))
     }
+    report["catalogLoaded"] = runtime.catalogLoaded
+    report["spaceCount"] = runtime.spaces.count
+    if let error = runtime.catalogError { report["catalogError"] = error }
     report["runtime"] = lastProbe
     report["passed"] =
       model.connected && lastProbe["health"] as? Bool == true
-      && lastProbe["mounted"] as? Bool == true
+      && lastProbe["mounted"] as? Bool == true && runtime.catalogLoaded
     if let error = runtime.error { report["runtimeError"] = error }
     if let error = model.error { report["agentError"] = error }
     let arguments = ProcessInfo.processInfo.arguments

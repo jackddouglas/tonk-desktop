@@ -89,7 +89,7 @@ extension RuntimeModel {
     }
   }
 
-  private func accountScript(_ script: String, arguments: [String: Any] = [:]) async throws
+  func accountScript(_ script: String, arguments: [String: Any] = [:]) async throws
     -> [String: Any]
   {
     guard let url = webView.url, RuntimeLocation.isEmbedded(url) else {
