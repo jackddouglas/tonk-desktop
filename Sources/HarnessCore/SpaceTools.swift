@@ -6,6 +6,10 @@ public enum SpaceTools {
       "tonk_space_info", "Read the attached Tonk space's current name, identity and branch names.",
       properties: [:], required: []),
     spec(
+      "tonk_space_schema",
+      "Read named concepts and typed fields on the attached space main branch. Includes runtime schemas, not record contents; reports truncation.",
+      properties: [:], required: []),
+    spec(
       "tonk_rename_space",
       "Rename only the attached Tonk space. Use when the user asks for a name change. Returns the name read back from the worker.",
       properties: [
@@ -30,7 +34,7 @@ public enum SpaceTools {
       throw HarnessError.message("Tool arguments must be an object.")
     }
     switch tool {
-    case "tonk_space_info":
+    case "tonk_space_info", "tonk_space_schema":
       guard fields.isEmpty else {
         throw HarnessError.message("This tool accepts no arguments or target space.")
       }

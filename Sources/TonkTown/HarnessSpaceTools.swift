@@ -9,7 +9,9 @@ extension HarnessModel {
 
       Attached Tonk space: \(space.subject).
       Use tonk_space_info to get its current name. You may inspect this space and
-      rename it when asked, using the provided tools. No other mutations are
+      rename it when asked, using the provided tools. When available, use
+      tonk_space_schema for concept names and typed fields on main. Schema presence
+      does not prove records exist; truncation is not a complete inventory. No other mutations are
       supported yet. You cannot choose another target or access other spaces.
       """
   }
@@ -33,11 +35,23 @@ extension HarnessModel {
       else { throw HarnessError.message("No matching active turn with an attached space.") }
       let name = try SpaceTools.validate(tool: tool, arguments: params["arguments"])
       try Task.checkCancellation()
-      activity = name == nil ? "Reading space" : "Renaming space"
-      toolActivity.append(name == nil ? "Reading attached space" : "Renaming attached space")
-      let text = try await runtime.performSpaceTool(space: space, name: name)
+      let isSchema = tool == "tonk_space_schema"
+      activity = isSchema ? "Reading schema" : (name == nil ? "Reading space" : "Renaming space")
+      toolActivity.append(
+        isSchema
+          ? "Reading attached space schema"
+          : (name == nil ? "Reading attached space" : "Renaming attached space"))
+      let text: String
+      if tool == "tonk_space_schema" {
+        text = try await runtime.readSpaceSchema(space)
+      } else {
+        text = try await runtime.performSpaceTool(space: space, name: name)
+      }
       try Task.checkCancellation()
-      toolActivity.append(name == nil ? "Space details received" : "Space rename verified")
+      toolActivity.append(
+        isSchema
+          ? "Space schema received"
+          : (name == nil ? "Space details received" : "Space rename verified"))
       activity = "Thinking"
       return SpaceTools.response(text, success: true)
     } catch {

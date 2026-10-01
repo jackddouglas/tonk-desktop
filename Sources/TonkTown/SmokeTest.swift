@@ -37,6 +37,9 @@ enum SmokeTest {
             userInfo: [NSLocalizedDescriptionKey: "Requested space is not in the catalog"])
         }
         report["spaceInspection"] = try await runtime.performSpaceTool(space: space, name: nil)
+        if arguments.contains("--inspect-schema") {
+          report["spaceSchema"] = try await runtime.readSpaceSchema(space)
+        }
       } catch {
         report["passed"] = false
         report["inspectionError"] =

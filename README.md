@@ -28,7 +28,7 @@ that enables Tonk's service-worker domain in the embedded web view.
    and persistence after reopening are verified; see
    the authentication plan.
 6. Open a space and click **Use for chat** to start a conversation attached to it.
-   Ask Robin to inspect it or rename it. The previous conversation is archived;
+   Ask Robin to inspect its schema or rename it. The previous conversation is archived;
    browsing another space does not change the attachment.
 
 The CLI is discovered at `/opt/homebrew/bin/codex`, `/usr/local/bin/codex`, or
@@ -44,14 +44,17 @@ executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 - Browser ChatGPT login and cancellation, with an isolated Codex profile.
 - Interactive hosted Tonk runtime with persistent web storage and reload.
 
-Attached conversations expose two native tools: inspect the space identity, name
-and branch names, and rename it with worker readback. The native app fixes the
+New attached conversations expose three native tools: inspect the space identity,
+name and branch names; list named concepts and typed fields on `main`; and rename
+it with worker readback. Schema inspection includes runtime concepts, reports
+truncation, and does not read records. Existing threads retain their original
+tool set: start a new conversation and use **Use for chat** to get the schema tool. The native app fixes the
 target; this is an application boundary using the signed-in worker, not a
 separately delegated CLI identity. Tool activity is visible in the conversation.
 Stop cancels pending responses, but cannot undo a write already submitted.
 
 Shell tools, web search, and multi-agent execution are disabled; unsupported
-server requests are declined. Content/schema introspection, building tools, CLI
+server requests are declined. Record-content inspection, building tools, CLI
 sync, and shared collaboration remain future work.
 
 Tonk assets load from `https://tonk.network`; they are not bundled from the
@@ -94,7 +97,8 @@ JSON health response, mounted Tonk iframe, and loaded native space catalog. Repo
 `artifacts/smoke.*/report.json`. WebKit data remains the app's regular web store.
 No model call or credential is needed for this test. Pass `--inspect-space <DID>`
 to additionally read an existing space through the same native tool adapter;
-this uses the existing Tonk web session and does not mutate the space.
+this uses the existing Tonk web session and does not mutate the space. Add
+`--inspect-schema` to also check the fixed read-only schema query.
 
 Manual integration checks: sign in, receive a real response, stop a reply,
 reopen and ask about the previous conversation, edit the personality, and

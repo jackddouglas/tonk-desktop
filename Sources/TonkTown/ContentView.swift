@@ -193,7 +193,7 @@ struct ContentView: View {
           Button("Use for chat") { model.attachSpace(space) }
             .disabled(model.busy || model.saved.conversation.space?.id == space.id)
             .help(
-              "Start a new conversation that can inspect and rename this space. The current conversation is archived."
+              "Start a new conversation that can inspect this space’s schema and rename it. The current conversation is archived."
             )
         }
         if runtime.loading { ProgressView().controlSize(.small) }

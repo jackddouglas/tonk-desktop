@@ -3,14 +3,19 @@ import HarnessCore
 
 @MainActor
 extension RuntimeModel {
-  func performSpaceTool(space: TonkSpace, name: String?) async throws -> String {
+  func requireSpaceReady(_ space: TonkSpace) throws {
     guard catalogLoaded, !catalogLoading, spaces.contains(where: { $0.id == space.id }),
-      let branch = catalogBranch, !loading, !signInPending
+      catalogBranch != nil, !loading, !signInPending
     else {
       throw HarnessError.message(
         "The attached space is not ready or is no longer in this account. Refresh spaces and try again."
       )
     }
+  }
+
+  func performSpaceTool(space: TonkSpace, name: String?) async throws -> String {
+    try requireSpaceReady(space)
+    let branch = catalogBranch!
     let key = space.subject
     try Task.checkCancellation()
     let arguments: [String: Any] = ["key": key, "subject": space.subject, "branch": branch]
@@ -56,5 +61,35 @@ extension RuntimeModel {
     }
     let data = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
     return String(decoding: data, as: UTF8.self)
+  }
+}
+
+@MainActor
+extension RuntimeModel {
+  func readSpaceSchema(_ space: TonkSpace) async throws -> String {
+    try requireSpaceReady(space)
+    try Task.checkCancellation()
+    let result = try await accountScript(
+      """
+      const path = '/api/repository/' + encodeURIComponent(subject) + '/branch/main/evaluate?transact=false';
+      const info = await api('/api/repository/' + encodeURIComponent(subject));
+      if (info.subject !== subject || !Object.hasOwn(info.branch || {}, 'main'))
+        throw new Error('The attached space has no available main branch.');
+      const response = await fetch(path, {
+        method: 'POST', headers: {'Content-Type': 'text/plain'}, body: document,
+        signal: AbortSignal.timeout(60000)
+      });
+      if (!response.ok) throw new Error('Schema inspection failed (HTTP ' + response.status + ').');
+      if (!(response.headers.get('content-type') || '').includes('json'))
+        throw new Error('The runtime does not support schema inspection.');
+      const text = await response.text();
+      if (text.length > 2000000) throw new Error('The space schema response is too large.');
+      return {response: text};
+      """, arguments: ["subject": space.subject, "document": SpaceSchema.query])
+    try Task.checkCancellation()
+    guard let text = result["response"] as? String else {
+      throw HarnessError.message("The worker returned no schema response.")
+    }
+    return try SpaceSchema.summarize(Data(text.utf8))
   }
 }
