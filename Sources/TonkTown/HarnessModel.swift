@@ -14,8 +14,6 @@ final class HarnessModel: ObservableObject {
   @Published var error: String?
   @Published var loginPending = false
   weak var runtime: RuntimeModel?
-  @Published var cliMessage = ""
-  var cliConnectionTask: Task<Void, Never>?
   var cliAdapters: [String: TonkCLI] = [:]
   @Published var toolActivity: [String] = []
   let client = AppServerClient()
@@ -213,8 +211,6 @@ final class HarnessModel: ObservableObject {
   }
 
   func stopTurn() async {
-    cliConnectionTask?.cancel()
-    if cliConnectionTask != nil { activity = "Stopping CLI connection" }
     client.cancelTools()
     guard let threadID = saved.conversation.threadID, let turnID else { return }
     activity = "Stopping"
@@ -230,7 +226,7 @@ final class HarnessModel: ObservableObject {
     }
   }
 
-  var canStop: Bool { busy && (turnID != nil || cliConnectionTask != nil) }
+  var canStop: Bool { busy && turnID != nil }
 
   func newConversation() {
     guard !busy else { return }
@@ -264,7 +260,6 @@ final class HarnessModel: ObservableObject {
   }
 
   func shutdown() {
-    cliConnectionTask?.cancel()
     if busy { saved.conversation.lastTurnStatus = "interrupted" }
     persist()
     client.stop()

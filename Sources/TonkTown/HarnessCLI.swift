@@ -10,36 +10,15 @@ extension HarnessModel {
     return cli
   }
 
-  func connectCLI() async {
-    guard !busy, let space = saved.conversation.space, let runtime else { return }
-    busy = true
-    activity = "Connecting CLI"
-    defer {
-      busy = false
-      activity = ""
-      cliConnectionTask = nil
+  func prepareCLI(for space: TonkSpace, runtime: RuntimeModel) async throws -> TonkCLI {
+    try runtime.requireSpaceReady(space)
+    let cli = cliAdapter(for: space)
+    if cli.pendingLink != nil || !cli.isConnected {
+      activity = "Connecting to space"
+      toolActivity.append("Preparing space tools")
     }
-    do {
-      let cli = cliAdapter(for: space)
-      if cli.pendingLink != nil || !cli.isConnected {
-        let link: String
-        if let pending = cli.pendingLink {
-          link = pending
-        } else {
-          link = try await runtime.createCLILink(space)
-        }
-        try Task.checkCancellation()
-        try await cli.connect(link: link)
-      }
-      _ = try await cli.status()
-      cliMessage = "CLI connected to \(space.title)"
-    } catch is CancellationError {
-      cliMessage = "CLI connection cancelled."
-    } catch {
-      let detail =
-        (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String
-        ?? error.localizedDescription
-      cliMessage = "CLI connection failed: \(detail)"
-    }
+    try await cli.ensureConnected { try await runtime.createCLILink(space) }
+    try Task.checkCancellation()
+    return cli
   }
 }

@@ -9,6 +9,7 @@ public final class TonkCLI {
   public let workspace: URL
   public let subject: String
   private var running = false
+  private var preparing = false
 
   public init(root: URL, subject: String) {
     self.subject = subject
@@ -32,6 +33,23 @@ public final class TonkCLI {
 
   public var pendingLink: String? {
     try? String(contentsOf: directory.appendingPathComponent("pending-link"), encoding: .utf8)
+  }
+
+  public func ensureConnected(createLink: () async throws -> String) async throws {
+    guard !preparing else {
+      throw HarnessError.message(
+        "This space is still connecting. Retry the tool when setup finishes.")
+    }
+    preparing = true
+    defer { preparing = false }
+    try Task.checkCancellation()
+    if pendingLink != nil || !isConnected {
+      let link: String
+      if let pending = pendingLink { link = pending } else { link = try await createLink() }
+      try Task.checkCancellation()
+      try await connect(link: link)
+    }
+    try verifyBinding()
   }
 
   public func connect(link: String) async throws {

@@ -5,6 +5,54 @@ import XCTest
 
 @MainActor
 final class TonkCLITests: XCTestCase {
+  func testAutomaticSetupImportsOnceAndReusesConnection() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let script = root.appendingPathComponent("fixture")
+    let registry =
+      "{\"spaces\":{\"attached\":{\"connection\":{\"subject\":\"did:key:zScratch\",\"version\":1,\"recipient\":\"did:key:zTool\"}}}}"
+    try Data("#!/bin/sh\nprintf '%s' '\(registry)' > \"$TONK_SPACES_STATE/spaces.json\"\n".utf8)
+      .write(to: script)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
+    setenv("TONK_TOWN_TONK", script.path, 1)
+    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    let cli = TonkCLI(root: root, subject: "did:key:zScratch")
+    var invitations = 0
+    for _ in 0..<2 {
+      try await cli.ensureConnected {
+        invitations += 1
+        return "private fixture invitation"
+      }
+    }
+    XCTAssertEqual(invitations, 1)
+    XCTAssertTrue(cli.isConnected)
+    XCTAssertNil(cli.pendingLink)
+  }
+
+  func testAutomaticSetupResumesRetainedInvitation() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let cli = TonkCLI(root: root, subject: "did:key:zScratch")
+    try FileManager.default.createDirectory(at: cli.directory, withIntermediateDirectories: true)
+    try Data("retained fixture invitation".utf8).write(
+      to: cli.directory.appendingPathComponent("pending-link"))
+    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
+    setenv("TONK_TOWN_TONK", "/usr/bin/false", 1)
+    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    var invitations = 0
+    do {
+      try await cli.ensureConnected {
+        invitations += 1
+        return "new invitation"
+      }
+      XCTFail("Expected fixture import failure")
+    } catch {}
+    XCTAssertEqual(invitations, 0)
+    XCTAssertEqual(cli.pendingLink, "retained fixture invitation")
+  }
+
   func testBindingRejectsWrongSubjectAndOrdinaryAccountReplica() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }

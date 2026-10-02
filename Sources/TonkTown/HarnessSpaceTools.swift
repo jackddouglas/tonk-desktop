@@ -12,7 +12,7 @@ extension HarnessModel {
       rename it when asked, using the provided tools. When available, use
       tonk_space_schema for concept names and typed fields on main. Schema presence
       does not prove records exist; truncation is not a complete inventory.
-      After the user connects the CLI, tonk_cli can inspect, preview, and apply notation
+      The harness connects space tools automatically. tonk_cli can inspect, preview, and apply notation
       to this attached space. Read the notation/views guides and existing schema first.
       Preview before applying. Apply only changes requested by the user; read records
       back after applying. The app runtime is the visual proof; CLI success alone is not.
@@ -26,7 +26,6 @@ extension HarnessModel {
     newConversation()
     // newConversation preserves the old conversation if archival fails.
     guard saved.conversation.threadID == nil, saved.conversation.messages.isEmpty else { return }
-    cliMessage = ""
     saved.conversation.space = space
     persist()
   }
@@ -41,9 +40,7 @@ extension HarnessModel {
       else { throw HarnessError.message("No matching active turn with an attached space.") }
       if tool == "tonk_cli" {
         let arguments = try CLITools.arguments(params["arguments"])
-        let cli = cliAdapter(for: space)
-        try cli.verifyBinding()
-        try runtime.requireSpaceReady(space)
+        let cli = try await prepareCLI(for: space, runtime: runtime)
         activity = "Using Tonk CLI"
         toolActivity.append("CLI: " + (params["arguments"]["operation"].string ?? ""))
         let output = try await cli.run(arguments)
