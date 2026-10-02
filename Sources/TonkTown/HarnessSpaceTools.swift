@@ -11,8 +11,13 @@ extension HarnessModel {
       Use tonk_space_info to get its current name. You may inspect this space and
       rename it when asked, using the provided tools. When available, use
       tonk_space_schema for concept names and typed fields on main. Schema presence
-      does not prove records exist; truncation is not a complete inventory. No other mutations are
-      supported yet. You cannot choose another target or access other spaces.
+      does not prove records exist; truncation is not a complete inventory.
+      After the user connects the CLI, tonk_cli can inspect, preview, and apply notation
+      to this attached space. Read the notation/views guides and existing schema first.
+      Preview before applying. Apply only changes requested by the user; read records
+      back after applying. The app runtime is the visual proof; CLI success alone is not.
+      CLI read operations inspect the local replica; apply automatically pulls then pushes.
+      Do not issue account, grant, invitation, or filesystem operations through notation. You cannot choose another target or access other spaces.
       """
   }
 
@@ -34,6 +39,19 @@ extension HarnessModel {
         let space = saved.conversation.space, let runtime,
         let tool = params["tool"].string
       else { throw HarnessError.message("No matching active turn with an attached space.") }
+      if tool == "tonk_cli" {
+        let arguments = try CLITools.arguments(params["arguments"])
+        let cli = cliAdapter(for: space)
+        try cli.verifyBinding()
+        try runtime.requireSpaceReady(space)
+        activity = "Using Tonk CLI"
+        toolActivity.append("CLI: " + (params["arguments"]["operation"].string ?? ""))
+        let output = try await cli.run(arguments)
+        try Task.checkCancellation()
+        activity = "Thinking"
+        toolActivity.append("CLI operation completed")
+        return SpaceTools.response(CLITools.summarize(output), success: true)
+      }
       let name = try SpaceTools.validate(tool: tool, arguments: params["arguments"])
       try Task.checkCancellation()
       let isSchema = tool == "tonk_space_schema"

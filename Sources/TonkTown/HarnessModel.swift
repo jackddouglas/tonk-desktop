@@ -16,6 +16,7 @@ final class HarnessModel: ObservableObject {
   weak var runtime: RuntimeModel?
   @Published var cliMessage = ""
   var cliConnectionTask: Task<Void, Never>?
+  var cliAdapters: [String: TonkCLI] = [:]
   @Published var toolActivity: [String] = []
   let client = AppServerClient()
   let root: URL
@@ -175,7 +176,9 @@ final class HarnessModel: ObservableObject {
           resumed = true
         }
       } else {
-        if saved.conversation.space != nil { parameters["dynamicTools"] = SpaceTools.definitions }
+        if saved.conversation.space != nil {
+          parameters["dynamicTools"] = .array(SpaceTools.definitions.array + [CLITools.definition])
+        }
         let result = try await client.request("thread/start", params: .object(parameters))
         guard let threadID = result["thread"]["id"].string else {
           throw HarnessError.message("The agent did not create a conversation.")

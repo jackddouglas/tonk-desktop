@@ -147,3 +147,15 @@ bash scripts/smoke.sh --staging --inspect-worker
 ```
 
 The CLI connection integration is still experimental.
+
+After attaching a space, **Connect CLI** imports a scoped tool invitation into
+that profile's per-space state directory. Robin can then use `tonk_cli` to read
+notation/views/events guides, inspect schema and records, preview a document,
+and apply an authorized edit with automatic sync. The tool cannot select a
+shell, executable, filesystem path, other space, or invitation command. New
+conversations receive new tool definitions; existing app-server threads retain
+their original tool set.
+
+The staging experiment has verified a real model-driven checklist edit in the
+native runtime. The installed CLI currently emits an account-directory warning
+for this isolated connection, even though content sync and rendering succeed.

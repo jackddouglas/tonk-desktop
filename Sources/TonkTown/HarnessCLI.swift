@@ -3,6 +3,13 @@ import HarnessCore
 
 @MainActor
 extension HarnessModel {
+  func cliAdapter(for space: TonkSpace) -> TonkCLI {
+    if let cli = cliAdapters[space.subject] { return cli }
+    let cli = TonkCLI(root: root, subject: space.subject)
+    cliAdapters[space.subject] = cli
+    return cli
+  }
+
   func connectCLI() async {
     guard !busy, let space = saved.conversation.space, let runtime else { return }
     busy = true
@@ -13,7 +20,7 @@ extension HarnessModel {
       cliConnectionTask = nil
     }
     do {
-      let cli = TonkCLI(root: root, subject: space.subject)
+      let cli = cliAdapter(for: space)
       if cli.pendingLink != nil || !cli.isConnected {
         let link: String
         if let pending = cli.pendingLink {
