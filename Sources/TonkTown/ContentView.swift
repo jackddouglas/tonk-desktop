@@ -51,13 +51,6 @@ struct ContentView: View {
       ScrollViewReader { reader in
         ScrollView {
           LazyVStack(alignment: .leading, spacing: 22) {
-            if model.saved.conversation.messages.isEmpty {
-              VStack(alignment: .leading, spacing: 12) {
-                Text("What’s on your mind?").font(.largeTitle.weight(.semibold))
-                Text("A place to think things through, make a plan, or begin something small.")
-                  .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-              }.padding(.vertical, 44)
-            }
             ForEach(model.saved.conversation.messages) { message in
               VStack(alignment: .leading, spacing: 7) {
                 Text(message.role == "user" ? "You" : model.saved.profile.name)
@@ -100,6 +93,15 @@ struct ContentView: View {
             }
             Color.clear.frame(height: 1).id("end")
           }.frame(maxWidth: 680).padding(24).frame(maxWidth: .infinity)
+        }
+        .overlay {
+          if model.saved.conversation.messages.isEmpty && !model.busy {
+            Text("Send a message to start")
+              .foregroundStyle(.secondary)
+              .multilineTextAlignment(.center)
+              .padding(24)
+              .allowsHitTesting(false)
+          }
         }
         .onChange(of: model.saved.conversation.messages) { _, _ in
           reader.scrollTo("end", anchor: .bottom)

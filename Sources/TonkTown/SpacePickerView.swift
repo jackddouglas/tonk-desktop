@@ -18,7 +18,12 @@ struct SpacePickerView: View {
           .buttonStyle(.plain).accessibilityLabel("Clear search")
         }
       }.padding(12)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+        .controlSurface(radius: 20)
+        .overlay {
+          RoundedRectangle(cornerRadius: 20)
+            .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
+            .allowsHitTesting(false)
+        }
         .padding(.horizontal, 20).padding(.top, 8)
       if let error = runtime.catalogError {
         VStack(alignment: .leading, spacing: 8) {
