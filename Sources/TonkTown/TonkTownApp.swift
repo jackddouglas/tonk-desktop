@@ -24,6 +24,7 @@ struct TonkTownApp: App {
         }
     }
     .defaultSize(width: 1180, height: 780)
+    .windowToolbarStyle(.unifiedCompact)
     .commands {
       CommandGroup(replacing: .newItem) {
         Button("New conversation") { model.newConversation() }

@@ -11,8 +11,8 @@ struct ContentView: View {
 
   var body: some View {
     HSplitView {
-      chat.frame(minWidth: 360, idealWidth: 470)
-      if showRuntime { workspace.frame(minWidth: 420, maxWidth: .infinity) }
+      chat.frame(minWidth: 340, idealWidth: 440)
+      if showRuntime { workspace.frame(minWidth: 380, maxWidth: .infinity) }
     }
     .toolbar {
       ToolbarItem(placement: .navigation) {
@@ -37,7 +37,7 @@ struct ContentView: View {
         } label: {
           Label("Show Tonk", systemImage: "sidebar.right")
         }
-        .help("Show or hide Tonk")
+        .help("Show or hide Tonk").keyboardShortcut("0", modifiers: [.command, .option])
       }
     }
     .sheet(isPresented: $showPersonality) {
@@ -47,45 +47,15 @@ struct ContentView: View {
 
   private var chat: some View {
     VStack(spacing: 0) {
-      HStack(spacing: 10) {
-        Image(systemName: "person.crop.circle.fill").font(.system(size: 30)).foregroundStyle(
-          .secondary)
-        VStack(alignment: .leading, spacing: 3) {
-          Text(model.saved.profile.name).font(.headline)
-          Text(model.connecting ? "Connecting…" : model.accountLabel)
-            .font(.caption).foregroundStyle(.secondary)
-        }
-        Spacer()
-        if !model.connected {
-          Button("Reconnect") { Task { await model.connect() } }.disabled(model.connecting)
-        } else if model.signedIn {
-          Menu {
-            Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy)
-          } label: {
-            Image(systemName: "ellipsis.circle")
-          }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Account options")
-        }
-      }.padding(20)
-      Divider()
-      if let space = model.saved.conversation.space {
-        HStack {
-          Image(systemName: "link")
-          Text(
-            "Attached: \(runtime.spaces.first(where: { $0.id == space.id })?.title ?? space.title)")
-          Spacer()
-        }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 12)
-      }
-
       ScrollViewReader { reader in
         ScrollView {
           LazyVStack(alignment: .leading, spacing: 22) {
             if model.saved.conversation.messages.isEmpty {
               VStack(alignment: .leading, spacing: 12) {
-                Text("What’s on your mind?").font(
-                  .system(size: 26, weight: .medium, design: .serif))
+                Text("What’s on your mind?").font(.largeTitle.weight(.semibold))
                 Text("A place to think things through, make a plan, or begin something small.")
                   .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-              }.padding(.vertical, 40)
+              }.padding(.vertical, 44)
             }
             ForEach(model.saved.conversation.messages) { message in
               VStack(alignment: .leading, spacing: 7) {
@@ -96,12 +66,12 @@ struct ContentView: View {
                     markdown: message.text,
                     options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
                     ?? AttributedString(message.text)
-                ).textSelection(.enabled)
+                ).textSelection(.enabled).lineSpacing(4)
                   .frame(maxWidth: .infinity, alignment: .leading)
               }
               .padding(message.role == "user" ? 14 : 0)
               .background(
-                message.role == "user" ? Color.primary.opacity(0.045) : .clear,
+                message.role == "user" ? Color(nsColor: .controlBackgroundColor) : .clear,
                 in: RoundedRectangle(cornerRadius: 14))
             }
             if !model.toolActivity.isEmpty {
@@ -120,17 +90,58 @@ struct ContentView: View {
               Text("Reply stopped").font(.caption).foregroundStyle(.secondary)
             }
             Color.clear.frame(height: 1).id("end")
-          }.padding(20)
+          }.frame(maxWidth: 680).padding(24).frame(maxWidth: .infinity)
         }
         .onChange(of: model.saved.conversation.messages) { _, _ in
           reader.scrollTo("end", anchor: .bottom)
         }
       }
 
+    }
+    .background(Color(nsColor: .textBackgroundColor))
+    .safeAreaInset(edge: .top, spacing: 0) { chatHeader.padding(12) }
+    .safeAreaInset(edge: .bottom, spacing: 0) { composer }
+  }
+
+  private var chatHeader: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 10) {
+        Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(
+          .secondary)
+        VStack(alignment: .leading, spacing: 3) {
+          Text(model.saved.profile.name).font(.headline)
+          Text(model.connecting ? "Connecting…" : model.accountLabel)
+            .font(.caption).foregroundStyle(.secondary)
+        }
+        Spacer()
+        if !model.connected {
+          Button("Reconnect") { Task { await model.connect() } }.disabled(model.connecting)
+        } else if model.signedIn {
+          Menu {
+            Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy)
+          } label: {
+            Image(systemName: "ellipsis.circle")
+          }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Account options")
+        }
+      }.padding(.horizontal, 16).padding(.vertical, 12)
+      if let space = model.saved.conversation.space {
+        HStack {
+          Image(systemName: "link")
+          Text(
+            "\(runtime.spaces.first(where: { $0.id == space.id })?.title ?? space.title)")
+          Spacer()
+        }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 12)
+      }
+
+    }.controlSurface()
+  }
+
+  private var composer: some View {
+    VStack(spacing: 0) {
       if let error = model.error {
         HStack(alignment: .top) {
           Image(systemName: "exclamationmark.circle")
-          Text(error).font(.callout).textSelection(.enabled)
+          Text(error).font(.callout).textSelection(.enabled).lineSpacing(4)
           Spacer(minLength: 0)
           Button {
             model.error = nil
@@ -158,6 +169,7 @@ struct ContentView: View {
           TextField("Message \(model.saved.profile.name)", text: $draft, axis: .vertical)
             .textFieldStyle(.plain).lineLimit(1...8).focused($composing)
             .onSubmit { submit() }.disabled(!model.canSend)
+            .accessibilityLabel("Message \(model.saved.profile.name)")
           if model.busy {
             Button {
               Task { await model.stopTurn() }
@@ -173,85 +185,94 @@ struct ContentView: View {
               )
               .accessibilityLabel("Send message")
           }
-        }.padding(14).background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 16))
-          .padding(16)
+        }.padding(16).controlSurface(radius: 24)
+          .padding(.horizontal, 16).padding(.bottom, 16).padding(.top, 8)
       }
     }
   }
 
   private var workspace: some View {
-    VStack(spacing: 0) {
-      HStack {
-        VStack(alignment: .leading, spacing: 3) {
-          Text(runtime.selectedSpace?.title ?? "Your spaces").font(.headline).lineLimit(1)
+    ZStack {
+      RuntimeView(model: runtime)
+        .allowsHitTesting(runtime.selectedSpace != nil)
+        .accessibilityHidden(runtime.selectedSpace == nil)
+      if runtime.selectedSpace == nil { SpacePickerView(runtime: runtime) }
+      if let error = runtime.error {
+        ContentUnavailableView {
+          Label("Couldn’t open Tonk", systemImage: "network")
+        } description: {
+          Text(error)
+        } actions: {
+          Button("Try again") { runtime.load() }
+        }.background(.background)
+      }
+    }
+    .background(.background)
+    .safeAreaInset(edge: .top, spacing: 0) {
+      VStack(spacing: 12) {
+        HStack(spacing: 12) {
           if runtime.selectedSpace != nil {
-            Button("All spaces") { runtime.showSpaces() }.buttonStyle(.link)
+            Button {
+              runtime.showSpaces()
+            } label: {
+              Image(systemName: "chevron.left")
+            }.help("All spaces").accessibilityLabel("All spaces")
           }
-        }
-        Spacer()
-        if let space = runtime.selectedSpace {
-          Button("Use for chat") { model.attachSpace(space) }
-            .disabled(model.busy || model.saved.conversation.space?.id == space.id)
-            .help(
-              "Start a new conversation that can inspect this space’s schema and rename it. The current conversation is archived."
+          VStack(alignment: .leading, spacing: 3) {
+            Text(runtime.selectedSpace?.title ?? "Spaces")
+              .font(.headline).lineLimit(1)
+              .help(runtime.selectedSpace?.title ?? "Spaces")
+            Text(
+              runtime.selectedSpace == nil
+                ? "A place for what you’re building" : "Shared context and live content"
             )
-        }
-        if runtime.loading { ProgressView().controlSize(.small) }
-        Button {
-          runtime.load()
-        } label: {
-          Image(systemName: "arrow.clockwise")
-        }.help("Reload Tonk").accessibilityLabel("Reload Tonk").disabled(runtime.signInPending)
-        Button {
-          NSWorkspace.shared.open(runtime.selectedSpace?.url ?? RuntimeLocation.home)
-        } label: {
-          Image(systemName: "arrow.up.right.square")
-        }
-        .help("Open Tonk in your browser").accessibilityLabel("Open Tonk in browser")
-      }.padding(20)
-      if runtime.signInPending {
-        HStack {
-          ProgressView().controlSize(.small)
-          Text(
-            runtime.attachingAccount
-              ? "Connecting your Tonk account…" : "Finish signing in in your browser"
-          )
-          .font(.callout)
-          Spacer()
-          Button("Cancel") { runtime.cancelSignIn() }.disabled(runtime.attachingAccount)
-        }.padding(.horizontal, 20).padding(.bottom, 12)
-      } else {
-        HStack {
-          if let message = runtime.accountMessage {
-            Text(message).font(.caption).textSelection(.enabled)
+            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
           }
-          Spacer()
-          if runtime.accountConnected {
-            Text("Tonk connected").font(.caption).foregroundStyle(.secondary)
-          } else {
+          Spacer(minLength: 0)
+          if let space = runtime.selectedSpace, model.saved.conversation.space?.id != space.id {
+            Button("Use for chat") { model.attachSpace(space) }
+              .disabled(model.busy)
+              .help("Start a new conversation with this space. Your current conversation is saved.")
+          }
+          if runtime.loading { ProgressView().controlSize(.small) }
+          Menu {
+            Button("Refresh", systemImage: "arrow.clockwise") {
+              if runtime.selectedSpace == nil {
+                Task { await runtime.refreshSpaces() }
+              } else {
+                runtime.load()
+              }
+            }.disabled(runtime.signInPending)
+            Button("Open in browser", systemImage: "arrow.up.right.square") {
+              NSWorkspace.shared.open(runtime.selectedSpace?.url ?? RuntimeLocation.home)
+            }
+          } label: {
+            Image(systemName: "ellipsis")
+          }
+          .menuStyle(.borderlessButton).fixedSize()
+          .accessibilityLabel("Space options").help("Space options")
+        }
+        if runtime.signInPending {
+          HStack {
+            ProgressView().controlSize(.small)
+            Text(
+              runtime.attachingAccount
+                ? "Connecting your account…" : "Finish signing in in your browser"
+            )
+            .font(.callout)
+            Spacer(minLength: 0)
+            Button("Cancel") { runtime.cancelSignIn() }.disabled(runtime.attachingAccount)
+          }
+        } else if !runtime.accountConnected {
+          HStack {
+            if let message = runtime.accountMessage {
+              Text(message).font(.caption).textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
             Button("Sign in to Tonk") { Task { await runtime.signIn() } }.disabled(runtime.loading)
           }
-        }.padding(.horizontal, 20).padding(.bottom, 12)
-      }
-      Divider()
-      ZStack {
-        RuntimeView(model: runtime)
-          .allowsHitTesting(runtime.selectedSpace != nil)
-          .accessibilityHidden(runtime.selectedSpace == nil)
-        if runtime.selectedSpace == nil {
-          SpacePickerView(runtime: runtime)
         }
-        if let error = runtime.error {
-          ContentUnavailableView {
-            Label("Couldn’t open Tonk", systemImage: "network")
-          } description: {
-            Text(error)
-          } actions: {
-            Button("Try again") { runtime.load() }
-          }
-          .background(.background)
-        }
-      }
+      }.padding(16).controlSurface().padding(12)
     }
   }
 
@@ -272,11 +293,14 @@ private struct PersonalityView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       Text("Your agent").font(.title2.weight(.semibold))
-      TextField("Name", text: $profile.name).textFieldStyle(.roundedBorder)
-      Text("Personality").font(.headline)
-      TextEditor(text: $profile.soul).font(.body).frame(height: 190)
-        .padding(8).overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
-        .accessibilityLabel("Agent personality")
+      Form {
+        TextField("Name", text: $profile.name)
+        Section("Personality") {
+          TextEditor(text: $profile.soul).font(.body).frame(minHeight: 180)
+            .scrollContentBackground(.hidden).multilineTextAlignment(.leading)
+            .accessibilityLabel("Agent personality")
+        }
+      }.formStyle(.grouped)
       Text("Changes apply to your next message.").font(.caption).foregroundStyle(.secondary)
       HStack {
         Spacer()
@@ -291,6 +315,6 @@ private struct PersonalityView: View {
           profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || profile.soul.count > 16000)
       }
-    }.padding(24).frame(width: 460)
+    }.padding(24).frame(width: 480)
   }
 }
