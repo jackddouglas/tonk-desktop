@@ -1,0 +1,81 @@
+import Foundation
+import XCTest
+
+@testable import HarnessCore
+
+@MainActor
+final class TonkCLITests: XCTestCase {
+  func testBindingRejectsWrongSubjectAndOrdinaryAccountReplica() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let cli = TonkCLI(root: root, subject: "did:key:zScratch")
+    let other = TonkCLI(root: root, subject: "did:key:zOther")
+    XCTAssertNotEqual(cli.state, other.state)
+    XCTAssertFalse(cli.isConnected)
+    try FileManager.default.createDirectory(at: cli.state, withIntermediateDirectories: true)
+    for connection: [String: Any] in [
+      [:], ["subject": "did:key:zOther", "version": 1, "recipient": "did:key:zTool"],
+    ] {
+      let data = try JSONSerialization.data(withJSONObject: [
+        "spaces": ["attached": ["connection": connection]]
+      ])
+      try data.write(to: cli.state.appendingPathComponent("spaces.json"))
+      XCTAssertThrowsError(try cli.verifyBinding())
+    }
+    let data = Data(
+      "{\"spaces\":{\"attached\":{\"connection\":{\"subject\":\"did:key:zScratch\",\"version\":1,\"recipient\":\"did:key:zTool\"}}}}"
+        .utf8)
+    try data.write(to: cli.state.appendingPathComponent("spaces.json"))
+    XCTAssertTrue(cli.isConnected)
+  }
+
+  func testProcessUsesIsolatedStateAndDoesNotPassAmbientSpace() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let script = root.appendingPathComponent("fixture")
+    try Data(
+      "#!/bin/sh\nprintf '%s\\n' \"$TONK_SPACES_STATE\" \"${TONK_SPACE-unset}\" \"$1\"\n".utf8
+    ).write(to: script)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+    let oldBinary = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
+    let oldSpace = ProcessInfo.processInfo.environment["TONK_SPACE"]
+    setenv("TONK_TOWN_TONK", script.path, 1)
+    setenv("TONK_SPACE", "ambient", 1)
+    defer {
+      if let oldBinary {
+        setenv("TONK_TOWN_TONK", oldBinary, 1)
+      } else {
+        unsetenv("TONK_TOWN_TONK")
+      }
+      if let oldSpace { setenv("TONK_SPACE", oldSpace, 1) } else { unsetenv("TONK_SPACE") }
+    }
+    let cli = TonkCLI(root: root, subject: "did:key:zScratch")
+    let output = try await cli.run(["literal; no shell evaluation"])
+    XCTAssertEqual(output, "\(cli.state.path)\nunset\nliteral; no shell evaluation\n")
+    let privateResult = try await cli.run(["private invitation"], privateOutput: true)
+    XCTAssertFalse(privateResult.contains("private invitation"))
+  }
+  func testCancellationStopsProcessAndRemovesPrivateOutput() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let script = root.appendingPathComponent("fixture")
+    try Data("#!/usr/bin/python3\nimport time\ntime.sleep(30)\n".utf8).write(to: script)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
+    setenv("TONK_TOWN_TONK", script.path, 1)
+    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    let cli = TonkCLI(root: root, subject: "did:key:zScratch")
+    let task = Task { try await cli.run([]) }
+    try await Task.sleep(for: .milliseconds(200))
+    task.cancel()
+    do {
+      _ = try await task.value
+      XCTFail("Expected cancellation")
+    } catch { XCTAssertTrue(error is CancellationError) }
+    let names = try FileManager.default.contentsOfDirectory(atPath: cli.directory.path)
+    XCTAssertFalse(names.contains(where: { $0.hasPrefix("run-") }))
+  }
+
+}
