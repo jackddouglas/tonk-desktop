@@ -14,6 +14,7 @@ struct ContentView: View {
       chat.frame(minWidth: 340, idealWidth: 440)
       if showRuntime { workspace.frame(minWidth: 380, maxWidth: .infinity) }
     }
+    .nativeControl()
     .toolbar {
       ToolbarItem(placement: .navigation) {
         Button {
@@ -72,7 +73,15 @@ struct ContentView: View {
               .padding(message.role == "user" ? 14 : 0)
               .background(
                 message.role == "user" ? Color(nsColor: .controlBackgroundColor) : .clear,
-                in: RoundedRectangle(cornerRadius: 14))
+                in: RoundedRectangle(cornerRadius: 14)
+              )
+              .overlay {
+                if message.role == "user" {
+                  RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                    .allowsHitTesting(false)
+                }
+              }
             }
             if !model.toolActivity.isEmpty {
               DisclosureGroup("Space activity (\(model.toolActivity.count))") {
@@ -120,8 +129,10 @@ struct ContentView: View {
           Menu {
             Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy)
           } label: {
-            Image(systemName: "ellipsis.circle")
-          }.menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Account options")
+            Image(systemName: "ellipsis").frame(width: 20, height: 20)
+          }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .frame(width: 32, height: 32).controlSurface(radius: 16)
+            .fixedSize().accessibilityLabel("Account options")
         }
       }.padding(.horizontal, 16).padding(.vertical, 12)
       if let space = model.saved.conversation.space {
@@ -133,7 +144,7 @@ struct ContentView: View {
         }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 12)
       }
 
-    }.controlSurface()
+    }
   }
 
   private var composer: some View {
@@ -158,8 +169,8 @@ struct ContentView: View {
             ProgressView("Finish signing in in your browser")
             Button("Cancel sign-in") { Task { await model.cancelLogin() } }
           } else {
-            Button("Sign in with ChatGPT") { Task { await model.signIn() } }.buttonStyle(
-              .borderedProminent)
+            Button("Sign in with ChatGPT") { Task { await model.signIn() } }.nativeControl(
+              prominent: true)
             Text("Tonk Town keeps its own sign-in on this Mac.").font(.caption).foregroundStyle(
               .secondary)
           }
@@ -174,12 +185,12 @@ struct ContentView: View {
             Button {
               Task { await model.stopTurn() }
             } label: {
-              Image(systemName: "stop.fill")
+              Image(systemName: "stop.fill").frame(width: 20, height: 20)
             }
-            .disabled(!model.canStop).accessibilityLabel("Stop reply")
+            .nativeControl(circular: true).disabled(!model.canStop).accessibilityLabel("Stop reply")
           } else {
-            Button(action: submit) { Image(systemName: "arrow.up") }
-              .buttonStyle(.borderedProminent)
+            Button(action: submit) { Image(systemName: "arrow.up").frame(width: 20, height: 20) }
+              .nativeControl(prominent: true, circular: true)
               .disabled(
                 !model.canSend || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
               )
@@ -215,8 +226,8 @@ struct ContentView: View {
             Button {
               runtime.showSpaces()
             } label: {
-              Image(systemName: "chevron.left")
-            }.help("All spaces").accessibilityLabel("All spaces")
+              Image(systemName: "chevron.left").frame(width: 20, height: 20)
+            }.nativeControl(circular: true).help("All spaces").accessibilityLabel("All spaces")
           }
           VStack(alignment: .leading, spacing: 3) {
             Text(runtime.selectedSpace?.title ?? "Spaces")
@@ -247,9 +258,10 @@ struct ContentView: View {
               NSWorkspace.shared.open(runtime.selectedSpace?.url ?? RuntimeLocation.home)
             }
           } label: {
-            Image(systemName: "ellipsis")
+            Image(systemName: "ellipsis").frame(width: 20, height: 20)
           }
-          .menuStyle(.borderlessButton).fixedSize()
+          .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+          .frame(width: 32, height: 32).controlSurface(radius: 16).fixedSize()
           .accessibilityLabel("Space options").help("Space options")
         }
         if runtime.signInPending {
@@ -272,7 +284,7 @@ struct ContentView: View {
             Button("Sign in to Tonk") { Task { await runtime.signIn() } }.disabled(runtime.loading)
           }
         }
-      }.padding(16).controlSurface().padding(12)
+      }.padding(16).padding(12)
     }
   }
 
@@ -315,6 +327,6 @@ private struct PersonalityView: View {
           profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || profile.soul.count > 16000)
       }
-    }.padding(24).frame(width: 480)
+    }.padding(24).frame(width: 480).nativeControl()
   }
 }
