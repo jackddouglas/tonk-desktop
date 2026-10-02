@@ -73,7 +73,12 @@ struct ContentView: View {
           Text(
             "Attached: \(runtime.spaces.first(where: { $0.id == space.id })?.title ?? space.title)")
           Spacer()
+          Button("Connect CLI") { model.cliConnectionTask = Task { await model.connectCLI() } }
+            .disabled(model.busy)
         }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.top, 12)
+        if !model.cliMessage.isEmpty {
+          Text(model.cliMessage).font(.caption).textSelection(.enabled).padding(.horizontal, 20)
+        }
       }
 
       ScrollViewReader { reader in

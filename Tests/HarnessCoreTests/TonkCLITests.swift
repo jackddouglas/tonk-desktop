@@ -35,7 +35,8 @@ final class TonkCLITests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: root) }
     let script = root.appendingPathComponent("fixture")
     try Data(
-      "#!/bin/sh\nprintf '%s\\n' \"$TONK_SPACES_STATE\" \"${TONK_SPACE-unset}\" \"$1\"\n".utf8
+      "#!/bin/sh\nprintf '%s\\n' \"$TONK_SPACES_STATE\" \"${TONK_SPACE-unset}\" \"$1\" \"$TONK_CONNECTION_ORIGIN\"\n"
+        .utf8
     ).write(to: script)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
     let oldBinary = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
@@ -52,7 +53,10 @@ final class TonkCLITests: XCTestCase {
     }
     let cli = TonkCLI(root: root, subject: "did:key:zScratch")
     let output = try await cli.run(["literal; no shell evaluation"])
-    XCTAssertEqual(output, "\(cli.state.path)\nunset\nliteral; no shell evaluation\n")
+    XCTAssertEqual(
+      output,
+      "\(cli.state.path)\nunset\nliteral; no shell evaluation\n\(RuntimeLocation.home.absoluteString)\n"
+    )
     let privateResult = try await cli.run(["private invitation"], privateOutput: true)
     XCTAssertFalse(privateResult.contains("private invitation"))
   }

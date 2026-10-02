@@ -87,6 +87,7 @@ public final class TonkCLI {
       environment[key] = ProcessInfo.processInfo.environment[key]
     }
     environment["TONK_SPACES_STATE"] = state.path
+    environment["TONK_CONNECTION_ORIGIN"] = RuntimeLocation.home.absoluteString
     environment["TONK_TELEMETRY"] = "0"
     environment["TONK_NO_UPDATE_CHECK"] = "1"
     process.environment = environment

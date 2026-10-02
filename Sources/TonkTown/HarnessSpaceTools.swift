@@ -21,6 +21,7 @@ extension HarnessModel {
     newConversation()
     // newConversation preserves the old conversation if archival fails.
     guard saved.conversation.threadID == nil, saved.conversation.messages.isEmpty else { return }
+    cliMessage = ""
     saved.conversation.space = space
     persist()
   }
