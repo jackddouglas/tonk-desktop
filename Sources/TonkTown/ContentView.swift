@@ -235,11 +235,10 @@ struct ContentView: View {
             Text(runtime.selectedSpace?.title ?? "Spaces")
               .font(.headline).lineLimit(1)
               .help(runtime.selectedSpace?.title ?? "Spaces")
-            Text(
-              runtime.selectedSpace == nil
-                ? "A place for what you’re building" : "Shared context and live content"
-            )
-            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            if runtime.selectedSpace != nil {
+              Text("Shared context and live content")
+                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
           }
           Spacer(minLength: 0)
           if let space = runtime.selectedSpace, model.saved.conversation.space?.id != space.id {
