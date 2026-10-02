@@ -4,6 +4,22 @@ import XCTest
 @testable import HarnessCore
 
 final class TonkAuthorizationTests: XCTestCase {
+  func testDeploymentsRejectEachOthersAuthorization() throws {
+    XCTAssertNoThrow(
+      try TonkAuthorization(
+        data: payload(remote: "https://staging.tonk.xyz/ucan/"), deployment: .staging))
+    XCTAssertThrowsError(try TonkAuthorization(data: payload(), deployment: .staging))
+    XCTAssertThrowsError(
+      try TonkAuthorization(
+        data: payload(remote: "https://staging.tonk.xyz/ucan/"), deployment: .production))
+    XCTAssertFalse(
+      RuntimeLocation.isEmbedded(URL(string: "https://tonk.network")!, deployment: .staging))
+    XCTAssertFalse(
+      RuntimeLocation.isEmbedded(URL(string: "https://staging.tonk.xyz")!, deployment: .production))
+    XCTAssertNotEqual(
+      RuntimeLocation.Deployment.staging.dataDirectory,
+      RuntimeLocation.Deployment.production.dataDirectory)
+  }
   private func payload(remote: String = "https://tonk.network/ucan/", delegation: String = "00aAFF")
     throws -> Data
   {

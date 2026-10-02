@@ -1,4 +1,5 @@
 import AppKit
+import HarnessCore
 import SwiftUI
 
 @main
@@ -8,7 +9,8 @@ struct TonkTownApp: App {
   @StateObject private var runtime = RuntimeModel()
 
   var body: some Scene {
-    Window("Tonk Town", id: "main") {
+    Window(RuntimeLocation.deployment == .staging ? "Tonk Town — Staging" : "Tonk Town", id: "main")
+    {
       ContentView(model: model, runtime: runtime)
         .frame(minWidth: 850, minHeight: 580)
         .task {

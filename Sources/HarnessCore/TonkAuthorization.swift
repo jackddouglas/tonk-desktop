@@ -6,7 +6,9 @@ public struct TonkAuthorization {
   public let credential: String
   public let remote: String
 
-  public init(data: Data) throws {
+  public init(data: Data, deployment: RuntimeLocation.Deployment = RuntimeLocation.deployment)
+    throws
+  {
     guard let grant = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
       throw CallbackError("The browser authorization is not a JSON object.")
     }
@@ -23,11 +25,12 @@ public struct TonkAuthorization {
     }
     guard let remote = grant["remote"] as? String,
       let components = URLComponents(string: remote), let url = components.url,
-      RuntimeLocation.isEmbedded(url),
+      RuntimeLocation.isEmbedded(url, deployment: deployment),
       ["/ucan", "/ucan/"].contains(components.percentEncodedPath),
       components.query == nil, components.fragment == nil
     else {
-      throw CallbackError("The browser authorization must name Tonk’s production /ucan/ service.")
+      throw CallbackError(
+        "The browser authorization must name the selected Tonk deployment’s /ucan/ service.")
     }
     self.delegation = delegation
     self.credential = credential

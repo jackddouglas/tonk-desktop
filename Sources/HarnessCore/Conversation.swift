@@ -86,9 +86,16 @@ public struct StateStore {
 }
 
 public enum RuntimeLocation {
-  public static let home = URL(string: "https://tonk.network")!
-  public static func isEmbedded(_ url: URL) -> Bool {
-    url.scheme == "https" && url.host == "tonk.network" && (url.port == nil || url.port == 443)
+  public enum Deployment: Sendable {
+    case production, staging
+    public var host: String { self == .staging ? "staging.tonk.xyz" : "tonk.network" }
+    public var dataDirectory: String { self == .staging ? "Tonk Town Staging" : "Tonk Town" }
+  }
+  public static let deployment: Deployment =
+    ProcessInfo.processInfo.arguments.contains("--staging") ? .staging : .production
+  public static var home: URL { URL(string: "https://" + deployment.host)! }
+  public static func isEmbedded(_ url: URL, deployment: Deployment = deployment) -> Bool {
+    url.scheme == "https" && url.host == deployment.host && (url.port == nil || url.port == 443)
       && url.user == nil && url.password == nil
   }
   public static func isExternal(_ url: URL) -> Bool {

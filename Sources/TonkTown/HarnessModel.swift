@@ -31,7 +31,7 @@ final class HarnessModel: ObservableObject {
       root = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
     } else {
       root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("Tonk Town", isDirectory: true)
+        .appendingPathComponent(RuntimeLocation.deployment.dataDirectory, isDirectory: true)
     }
     store = StateStore(directory: root)
     do { saved = try store.load() } catch {

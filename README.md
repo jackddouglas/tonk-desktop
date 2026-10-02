@@ -124,3 +124,26 @@ interact with the embedded runtime.
 
 Protocol shape was checked against `codex app-server generate-json-schema` from
 the installed CLI. Reference: [Codex app-server](https://learn.chatgpt.com/docs/app-server).
+
+## Isolated staging experiment
+
+Quit Tonk Town, then launch the signed app against staging:
+
+```sh
+open '.build/Tonk Town.app' --args --staging
+```
+
+The window reads “Tonk Town — Staging”. It uses `staging.tonk.xyz`, a separate
+persistent WebKit store, and `~/Library/Application Support/Tonk Town Staging`
+for conversations, agent sign-in, and CLI replicas. Sign in directly to a
+staging account and create a disposable staging space. Production grants are
+rejected in this mode. Do not import production-backed spaces for this test.
+Launching without `--staging` returns to the existing production profile.
+
+Read-only staging verification:
+
+```sh
+bash scripts/smoke.sh --staging --inspect-worker
+```
+
+The CLI connection integration is still experimental.

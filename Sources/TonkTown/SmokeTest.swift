@@ -27,6 +27,18 @@ enum SmokeTest {
     if let error = runtime.error { report["runtimeError"] = error }
     if let error = model.error { report["agentError"] = error }
     let arguments = ProcessInfo.processInfo.arguments
+    if arguments.contains("--inspect-worker") {
+      report["worker"] = try? await runtime.accountScript(
+        """
+        const registration = await navigator.serviceWorker.getRegistration();
+        const health = await api('/api/health');
+        const deployed = await api('/version.json');
+        return {build: health.build, worker: health.worker, workerWasm: health.workerWasm,
+          deployed, controller: navigator.serviceWorker.controller?.scriptURL || '',
+          active: registration?.active?.scriptURL || '',
+          waiting: registration?.waiting?.scriptURL || ''};
+        """)
+    }
     if let index = arguments.firstIndex(of: "--inspect-space"),
       arguments.indices.contains(index + 1)
     {
@@ -37,6 +49,26 @@ enum SmokeTest {
             userInfo: [NSLocalizedDescriptionKey: "Requested space is not in the catalog"])
         }
         report["spaceInspection"] = try await runtime.performSpaceTool(space: space, name: nil)
+        if arguments.contains("--inspect-worker") {
+          report["handoff"] = try await runtime.accountScript(
+            """
+            const field = (the) => ({the: 'xyz.tonk.agent-handoff/' + the, as: 'Text', cardinality: 'one'});
+            const data = await api('/api/repository/' + encodeURIComponent(subject) + '/branch/main/query', {
+              predicate: {with: {status: field('status'), link: field('link')}},
+              terms: {this: subject, status: {'?': {name: 'status'}}, link: {'?': {name: 'link'}}}
+            });
+            const rows = Array.isArray(data) ? data : data.conclusions || [];
+            return {rows: rows.map(row => {
+              const fields = row.fields || {};
+              let kind = 'empty';
+              try {
+                const url = new URL(fields.link);
+                kind = url.hash.startsWith('#tonk-agent-') ? 'agent' : url.searchParams.has('access') ? 'person' : url.pathname.startsWith('/@/') ? 'shortcut' : 'unknown';
+              } catch {}
+              return {status: fields.status, linkKind: kind};
+            })};
+            """, arguments: ["subject": space.subject])
+        }
         if arguments.contains("--inspect-schema") {
           report["spaceSchema"] = try await runtime.readSpaceSchema(space)
         }

@@ -34,7 +34,9 @@ extension RuntimeModel {
         return
       }
       let callbackURL = try await handoff.start()
-      var url = URLComponents(string: "https://tonk.network/settings/link")!
+      var url = URLComponents(
+        url: RuntimeLocation.home.appendingPathComponent("settings/link"),
+        resolvingAgainstBaseURL: false)!
       url.queryItems = [
         URLQueryItem(name: "audience", value: device),
         URLQueryItem(name: "callback", value: callbackURL.absoluteString),
@@ -63,7 +65,7 @@ extension RuntimeModel {
         if (root.status !== 'ready' || root.deviceDid !== device)
           throw new Error('The runtime did not accept the device authorization.');
         const account = await api('/api/account/attach', {
-          provider: 'https://tonk.network', rootDid: root.rootDid,
+          provider: runtimeOrigin, rootDid: root.rootDid,
           credentialId: credential, delegationHex: delegation, remote
         });
         if (account.status !== 'registered' || account.deviceDid !== device)
@@ -97,7 +99,7 @@ extension RuntimeModel {
     }
     let result = try await webView.callAsyncJavaScript(
       """
-      if (location.origin !== 'https://tonk.network' || !navigator.serviceWorker?.controller)
+      if (location.origin !== runtimeOrigin || !navigator.serviceWorker?.controller)
         throw new Error('The Tonk worker is not ready. Reload and try again.');
       async function api(path, body) {
         const response = await fetch(path, {
@@ -111,7 +113,10 @@ extension RuntimeModel {
         return await response.json();
       }
       \(script)
-      """, arguments: arguments, in: nil, contentWorld: .page)
+      """,
+      arguments: arguments.merging(["runtimeOrigin": RuntimeLocation.home.absoluteString]) {
+        _, trusted in trusted
+      }, in: nil, contentWorld: .page)
     guard let object = result as? [String: Any] else {
       throw CallbackError("Invalid runtime response.")
     }

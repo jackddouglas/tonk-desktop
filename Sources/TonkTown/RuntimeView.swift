@@ -24,7 +24,10 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
 
   override init() {
     let configuration = WKWebViewConfiguration()
-    configuration.websiteDataStore = .default()
+    configuration.websiteDataStore =
+      RuntimeLocation.deployment == .staging
+      ? WKWebsiteDataStore(forIdentifier: UUID(uuidString: "58BD1C91-3442-4CDA-9267-FD7B7C7A8A1D")!)
+      : .default()
     // The native picker can cover/detach this view while still querying its worker.
     configuration.preferences.inactiveSchedulingPolicy = .none
     configuration.limitsNavigationsToAppBoundDomains = true
