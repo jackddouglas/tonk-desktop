@@ -1,0 +1,45 @@
+concept!: &town-checklist
+  description: A small checklist for the Tonk Town staging experiment
+  with:
+    title:
+      description: The checklist heading
+      the: town.checklist/title
+      as: text
+      cardinality: one
+    connect:
+      description: Connection step status
+      the: town.checklist/connect
+      as: text
+      cardinality: one
+    build:
+      description: Build step status
+      the: town.checklist/build
+      as: text
+      cardinality: one
+    verify:
+      description: Follow-up verification status
+      the: town.checklist/verify
+      as: text
+      cardinality: one
+
+town-checklist!:
+  this: id:town-checklist-smoke
+  title: Tonk Town checklist
+  connect: Done — connect the isolated CLI
+  build: Done — build a durable checklist
+  verify: Pending — verify a follow-up edit
+
+view!:
+  this: town-checklist
+  show:
+    directory: |
+      <article style="max-width:640px;margin:48px auto;padding:32px;font-family:system-ui;line-height:1.6;color:#232329;background:#faf9f6;border-radius:16px">
+        <p style="font-size:13px;color:#62626b">TONK TOWN / STAGING</p>
+        <h1>{title}</h1>
+        <ul style="padding-left:24px">
+          <li>{connect}</li>
+          <li>{build}</li>
+          <li>{verify}</li>
+        </ul>
+        <p style="font-size:14px;color:#62626b">Built through the CLI. Stored in this space.</p>
+      </article>
