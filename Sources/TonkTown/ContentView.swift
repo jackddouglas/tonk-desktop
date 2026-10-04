@@ -6,6 +6,7 @@ struct ContentView: View {
   @ObservedObject var runtime: RuntimeModel
   @State private var draft = ""
   @State private var showPersonality = false
+  @State private var sharingSpace: TonkSpace?
   @State private var showRuntime = true
   @FocusState private var composing: Bool
 
@@ -40,6 +41,9 @@ struct ContentView: View {
         }
         .help("Show or hide Tonk").keyboardShortcut("0", modifiers: [.command, .option])
       }
+    }
+    .sheet(item: $sharingSpace) { space in
+      ShareSpaceView(runtime: runtime, space: space)
     }
     .sheet(isPresented: $showPersonality) {
       PersonalityView(profile: model.saved.profile) { model.updateProfile($0) }
@@ -272,6 +276,14 @@ struct ContentView: View {
             Button("Use for chat") { model.attachSpace(space) }
               .disabled(model.busy || model.creatingSpace)
               .help("Start a new conversation with this space. Your current conversation is saved.")
+          }
+          if let space = runtime.selectedSpace {
+            Button {
+              sharingSpace = space
+            } label: {
+              Image(systemName: "square.and.arrow.up").frame(width: 20, height: 20)
+            }.nativeControl(circular: true).help("Share space").accessibilityLabel("Share space")
+              .disabled(runtime.loading || !runtime.accountConnected)
           }
           if runtime.loading { ProgressView().controlSize(.small) }
           Menu {
