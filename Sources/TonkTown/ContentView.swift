@@ -55,12 +55,7 @@ struct ContentView: View {
               VStack(alignment: .leading, spacing: 7) {
                 Text(message.role == "user" ? "You" : model.saved.profile.name)
                   .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                Text(
-                  (try? AttributedString(
-                    markdown: message.text,
-                    options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-                    ?? AttributedString(message.text)
-                ).textSelection(.enabled).lineSpacing(4)
+                MessageMarkdown(text: message.text)
                   .frame(maxWidth: .infinity, alignment: .leading)
               }
               .padding(message.role == "user" ? 14 : 0)

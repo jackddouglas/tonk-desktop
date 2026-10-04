@@ -8,7 +8,7 @@ ChatGPT authentication and inference. WKWebView runs Tonk's existing web app.
 
 Requires macOS 14+, Xcode command-line tools with Swift 5.9+, and the
 [Codex CLI](https://learn.chatgpt.com/docs/cli). Developed with Swift 6.4 and
-Codex CLI 0.159.3. No Swift package dependencies.
+Codex CLI 0.159.3. Markdown rendering uses MarkdownUI; SwiftPM resolves its dependencies.
 
 ```sh
 bash scripts/build-app.sh
@@ -51,6 +51,9 @@ executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 ## First increment
 
 - Streaming native chat, stop, errors, and reconnect.
+- Selectable GitHub-flavored Markdown messages: tables, headings, nested and task
+  lists, blockquotes, fenced code, links, images, and inline formatting. Wide tables
+  and code blocks scroll horizontally. This does not add LaTeX math or executable HTML.
 - Editable local agent personality, applied on the next message.
 - Transcript persistence and Codex thread resumption across launches.
 - New conversation archives the previous local transcript.
