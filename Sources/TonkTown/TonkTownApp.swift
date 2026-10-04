@@ -13,6 +13,7 @@ struct TonkTownApp: App {
     {
       ContentView(model: model, runtime: runtime)
         .frame(minWidth: 850, minHeight: 580)
+        .background(WindowAppearance())
         .task {
           delegate.model = model
           model.runtime = runtime
@@ -30,6 +31,19 @@ struct TonkTownApp: App {
         Button("New conversation") { model.newConversation() }
           .keyboardShortcut("n").disabled(model.busy)
       }
+    }
+  }
+}
+
+private struct WindowAppearance: NSViewRepresentable {
+  func makeNSView(context: Context) -> NSView { SeparatorlessView() }
+  func updateNSView(_ nsView: NSView, context: Context) {}
+
+  private final class SeparatorlessView: NSView {
+    override func viewDidMoveToWindow() {
+      super.viewDidMoveToWindow()
+      // The automatic separator spans both panes at the taller chat header's edge.
+      window?.titlebarSeparatorStyle = .none
     }
   }
 }
