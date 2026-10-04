@@ -6,9 +6,9 @@ ChatGPT authentication and inference. WKWebView runs Tonk's existing web app.
 
 ## Run
 
-Requires macOS 14+, Xcode command-line tools with Swift 5.9+, and the
+Requires macOS 15+, Xcode command-line tools with Swift 6.0+, and the
 [Codex CLI](https://learn.chatgpt.com/docs/cli). Developed with Swift 6.4 and
-Codex CLI 0.159.3. Markdown rendering uses MarkdownUI; SwiftPM resolves its dependencies.
+Codex CLI 0.159.3. Markdown rendering and native drag selection use Textual; SwiftPM resolves its dependencies.
 
 ```sh
 bash scripts/build-app.sh

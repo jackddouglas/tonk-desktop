@@ -20,8 +20,12 @@ fi
 swift build
 app="$PWD/.build/Tonk Town.app"
 mkdir -p "$app/Contents/MacOS"
+mkdir -p "$app/Contents/Resources"
 cp .build/debug/TonkTown "$app/Contents/MacOS/TonkTown"
 cp Resources/Info.plist "$app/Contents/Info.plist"
+for bundle in .build/debug/textual_Textual.bundle .build/debug/swiftui-math_SwiftUIMath.bundle; do
+    ditto "$bundle" "$app/Contents/Resources/$(basename "$bundle")"
+done
 codesign --force --sign "$identity" --timestamp=none "$app"
 codesign --verify --strict "$app"
 echo "$app"

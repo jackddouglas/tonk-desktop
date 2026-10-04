@@ -3,17 +3,17 @@ import PackageDescription
 
 let package = Package(
   name: "TonkTown",
-  platforms: [.macOS(.v14)],
+  platforms: [.macOS("15.0")],
   products: [.executable(name: "TonkTown", targets: ["TonkTown"])],
   dependencies: [
-    .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.4.1")
+    .package(url: "https://github.com/gonzalezreal/textual", from: "0.5.0")
   ],
   targets: [
     .target(name: "HarnessCore"),
     .executableTarget(
       name: "TonkTown",
       dependencies: [
-        "HarnessCore", .product(name: "MarkdownUI", package: "swift-markdown-ui"),
+        "HarnessCore", .product(name: "Textual", package: "textual"),
       ]),
     .testTarget(name: "HarnessCoreTests", dependencies: ["HarnessCore"]),
     .testTarget(name: "TonkTownTests", dependencies: ["TonkTown"]),
