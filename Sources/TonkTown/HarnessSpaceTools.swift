@@ -21,6 +21,9 @@ extension HarnessModel {
       does not prove records exist; truncation is not a complete inventory.
       The harness connects space tools automatically. tonk_cli can inspect, preview, and apply notation
       to this attached space. Read the notation/views guides and existing schema first.
+      When available, prefer tonk_query and tonk_preview for direct local reads and validation.
+      These use the preview's replica without a CLI or network pull. tonk_preview does not
+      render proposed changes or return a proposed-state diff. CLI remains the write path.
       Entity references must use exact saved URIs. YAML anchors name references within
       a document; they do not create id:name identities. Use explicit this: id:name
       for stable IDs, or query the generated IDs before referring to existing records.
@@ -75,6 +78,15 @@ extension HarnessModel {
       guard let space = saved.conversation.space, let runtime else {
         throw HarnessError.message(
           "No space is attached. Propose one and wait for acceptance first.")
+      }
+      if ["tonk_query", "tonk_preview"].contains(tool) {
+        activity = tool == "tonk_query" ? "Reading local space" : "Validating notation"
+        toolActivity.append(activity)
+        let result = try await runtime.evaluateReadOnly(
+          space, tool: tool, arguments: params["arguments"])
+        let data = try JSONEncoder().encode(result)
+        activity = "Thinking"
+        return SpaceTools.response(String(decoding: data, as: UTF8.self), success: true)
       }
       if tool == "tonk_cli" {
         _ = try CLITools.arguments(params["arguments"])

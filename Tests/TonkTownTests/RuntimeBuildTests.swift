@@ -1,0 +1,54 @@
+import WebKit
+import XCTest
+
+@testable import TonkTown
+
+@MainActor
+final class RuntimeBuildTests: XCTestCase {
+  func testEvaluationUsesOnlyLocalDryRunAndKeepsPreviewIntact() async throws {
+    let webView = WKWebView()
+    webView.loadHTMLString("<input id='draft' value='keep this'>", baseURL: nil)
+    for _ in 0..<100 {
+      if !webView.isLoading { break }
+      try await Task.sleep(for: .milliseconds(20))
+    }
+    let script = """
+      const original = window.document.getElementById('draft');
+      original.focus();
+      let requests = [];
+      async function api(path) {
+        requests.push(path);
+        return {subject: matches ? subject : 'wrong', branch: {main: {}}};
+      }
+      async function fetch(path, options) {
+        requests.push(path);
+        if (options.method !== 'POST' || options.headers['Content-Type'] !== 'text/plain' || options.body !== document)
+          throw new Error('Unexpected request');
+        return {ok: true, headers: {get: () => 'application/json'}, text: async () => '{"ok":true}'};
+      }
+      async function evaluate() { \(RuntimeModel.evaluateReadOnlyScript) }
+      let rejected = false;
+      try { await evaluate(); } catch { rejected = true; }
+      return {requests, rejected, sameNode: original === window.document.getElementById('draft'),
+        focused: window.document.activeElement === original, value: original.value};
+      """
+    for matches in [true, false] {
+      let result =
+        try await webView.callAsyncJavaScript(
+          script,
+          arguments: [
+            "subject": "did:key:z123", "document": "thing!:\n  this: id:test", "matches": matches,
+          ], in: nil, contentWorld: .page) as! [String: Any]
+      let requests = result["requests"] as! [String]
+      XCTAssertEqual(requests.count, matches ? 2 : 1)
+      if matches {
+        XCTAssertEqual(
+          requests.last, "/api/repository/did%3Akey%3Az123/branch/main/evaluate?transact=false")
+      }
+      XCTAssertEqual(result["rejected"] as? Bool, !matches)
+      XCTAssertEqual(result["sameNode"] as? Bool, true)
+      XCTAssertEqual(result["focused"] as? Bool, true)
+      XCTAssertEqual(result["value"] as? String, "keep this")
+    }
+  }
+}
