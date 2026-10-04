@@ -83,9 +83,24 @@ extension HarnessModel {
         toolActivity.append("CLI: " + (params["arguments"]["operation"].string ?? ""))
         let output = try await cli.executeTool(params["arguments"])
         try Task.checkCancellation()
+        var summary = CLITools.summarize(output)
+        if params["arguments"]["operation"].string == "apply" {
+          activity = "Synchronizing space"
+          do {
+            try await runtime.synchronizeAfterCLIWrite(space)
+            toolActivity.append("Space update synchronized")
+            summary +=
+              "\nBrowser replica pulled. Use tonk_inspect_view to verify the rendered result."
+          } catch {
+            // The write already completed. Never turn a pull failure into an invitation to replay it.
+            toolActivity.append("Space update saved; preview synchronization unconfirmed")
+            summary +=
+              "\nWarning: CLI operation completed, but browser synchronization was not confirmed. Do not repeat the write. The preview may be stale."
+          }
+        }
         activity = "Thinking"
         toolActivity.append("CLI operation completed")
-        return SpaceTools.response(CLITools.summarize(output), success: true)
+        return SpaceTools.response(summary, success: true)
       }
       let name = try SpaceTools.validate(tool: tool, arguments: params["arguments"])
       try Task.checkCancellation()
