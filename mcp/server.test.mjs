@@ -9,7 +9,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { connectRuntime } from './runtime-client.mjs';
 
-test('external stdio client discovers tools, calls both and receives operation errors', async () => {
+for (const allowsWrites of [false, true]) test(`external stdio client with writes=${allowsWrites}`, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tonk-mcp-test-'));
   const token = 'a'.repeat(72);
   const calls = [];
@@ -20,14 +20,16 @@ test('external stdio client discovers tools, calls both and receives operation e
     const value = JSON.parse(body);
     res.setHeader('content-type', 'application/json');
     if (req.url === '/tools') {
-      res.end(JSON.stringify({ tools: ['tonk_query', 'tonk_preview'].map(name => ({
-        name, description: 'Fixture tool', annotations: { readOnlyHint: true },
+      res.end(JSON.stringify({ tools: (allowsWrites ? ['tonk_query', 'tonk_preview', 'tonk_apply'] : ['tonk_query', 'tonk_preview']).map(name => ({
+        name, description: 'Fixture tool', annotations: { readOnlyHint: name !== 'tonk_apply' },
         inputSchema: { type: 'object', additionalProperties: false,
-          properties: { [name === 'tonk_query' ? 'target' : 'document']: { type: 'string' } },
-          required: [name === 'tonk_query' ? 'target' : 'document'] },
+          properties: { [name === 'tonk_query' ? 'target' : 'document']: { type: 'string' },
+            ...(name === 'tonk_apply' ? { expectedRevision: { anyOf: [{ type: 'object', additionalProperties: true }, { type: 'null' }] } } : {}) },
+          required: name === 'tonk_apply' ? ['document', 'expectedRevision'] : [name === 'tonk_query' ? 'target' : 'document'] },
       })) }));
     } else {
       calls.push(value);
+      if (value.name === 'tonk_apply') { req.socket.destroy(); return; }
       res.end(JSON.stringify(value.arguments.document === 'bad'
         ? { error: 'Notation failed validation.' }
         : { result: { committed: false, revision: 'fixture', matches: [] } }));
@@ -43,7 +45,7 @@ test('external stdio client discovers tools, calls both and receives operation e
       args: [fileURLToPath(new URL('./server.mjs', import.meta.url)), config],
       stderr: 'pipe',
     }));
-    assert.deepEqual((await client.listTools()).tools.map(tool => tool.name).sort(), ['tonk_preview', 'tonk_query']);
+    assert.deepEqual((await client.listTools()).tools.map(tool => tool.name).sort(), allowsWrites ? ['tonk_apply', 'tonk_preview', 'tonk_query'] : ['tonk_preview', 'tonk_query']);
     for (const [name, args] of [['tonk_query', { target: 'packing-item' }], ['tonk_preview', { document: 'packing-item:\n' }]]) {
       const result = await client.callTool({ name, arguments: args });
       assert.equal(result.isError, undefined);
@@ -56,6 +58,16 @@ test('external stdio client discovers tools, calls both and receives operation e
     const invalid = await client.callTool({ name: 'tonk_query', arguments: { target: 'thing', space: 'other' } });
     assert.equal(invalid.isError, true);
     assert.equal(calls.length, 3, 'invalid arguments must not reach host');
+    if (allowsWrites) {
+      for (const expectedRevision of [null, { tree: 'opaque-tree', issuer: 'did:key:fixture', signature: [1, 2, 3] }]) {
+        const count = calls.length;
+        const uncertain = await client.callTool({ name: 'tonk_apply', arguments: { document: 'thing!:', expectedRevision } });
+        assert.equal(uncertain.isError, true);
+        assert.match(uncertain.content[0].text, /Do not repeat/);
+        assert.equal(calls.length, count + 1, 'lost response must not replay write');
+        assert.deepEqual(calls.at(-1).arguments.expectedRevision, expectedRevision, 'SDK must preserve opaque revision fields');
+      }
+    }
     await chmod(config, 0o644);
     await assert.rejects(connectRuntime(config), /private file/);
   } finally {

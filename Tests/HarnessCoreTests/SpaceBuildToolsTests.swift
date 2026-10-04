@@ -3,6 +3,42 @@ import XCTest
 @testable import HarnessCore
 
 final class SpaceBuildToolsTests: XCTestCase {
+  func testApplyRequiresRevisionAndReportsUncertainResponsesWithoutRetryAdvice() throws {
+    let document = "thing!:\n  this: id:test\n"
+    for revision: JSONValue in [.null, .object(["tree": .string("test")])] {
+      XCTAssertEqual(
+        try SpaceBuildTools.document(
+          tool: "tonk_apply",
+          arguments: .object([
+            "document": .string(document), "expectedRevision": revision,
+          ])), document)
+    }
+    for arguments: JSONValue in [
+      .object(["document": .string(document)]),
+      .object(["document": .string(document), "expectedRevision": .string("any")]),
+      .object(["document": .string(document), "expectedRevision": .null, "space": .string("other")]
+      ),
+    ] {
+      XCTAssertThrowsError(try SpaceBuildTools.document(tool: "tonk_apply", arguments: arguments))
+    }
+    let before: JSONValue = .object(["tree": .string("before")])
+    let after: JSONValue = .object(["tree": .string("after")])
+    let data = try JSONEncoder().encode(
+      JSONValue.object([
+        "revision_before": before, "revision_after": after,
+        "commits": .object(["claims": .number(1)]),
+      ]))
+    let result = try SpaceBuildTools.appliedResult(data, expectedRevision: before)
+    XCTAssertEqual(result["revision"], after)
+    XCTAssertEqual(result["revisionChanged"], .bool(true))
+    XCTAssertEqual(result["renderingConfirmed"], .bool(false))
+    XCTAssertThrowsError(try SpaceBuildTools.appliedResult(data, expectedRevision: .null)) {
+      error in
+      XCTAssertTrue(error.localizedDescription.contains("Do not repeat"))
+    }
+    XCTAssertThrowsError(
+      try SpaceBuildTools.appliedResult(Data("{}".utf8), expectedRevision: before))
+  }
   func testQueryCannotInjectNotationOrChangeTargetSpace() throws {
     XCTAssertEqual(
       try SpaceBuildTools.document(

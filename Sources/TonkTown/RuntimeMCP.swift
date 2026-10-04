@@ -10,11 +10,12 @@ extension RuntimeModel {
       arguments.indices.contains(index + 1)
     else { return }
     let subject = arguments[index + 1]
-    let bridge = LocalRuntimeBridge { [weak self] name, arguments in
+    let bridge = LocalRuntimeBridge(allowsWrites: arguments.contains("--mcp-write")) {
+      [weak self] name, arguments in
       guard let self, let space = self.spaces.first(where: { $0.subject == subject }) else {
         throw HarnessError.message("The configured MCP space is unavailable in this account.")
       }
-      return try await self.evaluateReadOnly(space, tool: name, arguments: arguments)
+      return try await self.performBuildTool(space, tool: name, arguments: arguments)
     }
     do {
       let descriptor = try await bridge.start()

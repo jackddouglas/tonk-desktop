@@ -12,8 +12,8 @@ if (!path || process.argv.length !== 3) {
 try {
   const callRuntime = await connectRuntime(path);
   const { tools } = await callRuntime('/tools', {});
-  if (!Array.isArray(tools) || tools.length !== 2 ||
-      tools.map(tool => tool.name).sort().join(',') !== 'tonk_preview,tonk_query') {
+  if (!Array.isArray(tools) || !['tonk_preview,tonk_query', 'tonk_apply,tonk_preview,tonk_query'].includes(
+      tools.map(tool => tool.name).sort().join(','))) {
     throw new Error('The runtime exposes an unsupported tool contract.');
   }
   serveStdio(() => {
@@ -37,7 +37,10 @@ try {
             structuredContent: response.result,
           };
         } catch {
-          return { isError: true, content: [{ type: 'text', text: 'The local runtime connection failed. Reconnect to Tonk Town and retry this read-only operation.' }] };
+          const text = tool.name === 'tonk_apply'
+            ? 'The write outcome is unknown. Reconnect and query the space before deciding what to do. Do not repeat the write automatically.'
+            : 'The local runtime connection failed. Reconnect to Tonk Town and retry this read-only operation.';
+          return { isError: true, content: [{ type: 'text', text }] };
         }
       });
     }

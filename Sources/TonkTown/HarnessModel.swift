@@ -180,7 +180,7 @@ final class HarnessModel: ObservableObject {
       } else {
         parameters["dynamicTools"] = .array(
           SpaceTools.definitions.array + SpaceBuildTools.definitions
-            + [CLITools.definition, SpaceProposal.definition])
+            + [SpaceBuildTools.applyDefinition, CLITools.definition, SpaceProposal.definition])
         let result = try await client.request("thread/start", params: .object(parameters))
         guard let threadID = result["thread"]["id"].string else {
           throw HarnessError.message("The agent did not create a conversation.")

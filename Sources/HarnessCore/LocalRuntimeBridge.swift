@@ -7,6 +7,7 @@ import Network
 public final class LocalRuntimeBridge {
   public typealias Handler = @MainActor (String, JSONValue) async throws -> JSONValue
   private let handler: Handler
+  private let allowsWrites: Bool
   private let token = UUID().uuidString + UUID().uuidString
   private var listener: NWListener?
   private var startup: CheckedContinuation<JSONValue, Error>?
@@ -14,7 +15,10 @@ public final class LocalRuntimeBridge {
   private var connections: [UUID: NWConnection] = [:]
   private var jobs: [UUID: Task<Void, Never>] = [:]
 
-  public init(handler: @escaping Handler) { self.handler = handler }
+  public init(allowsWrites: Bool = false, handler: @escaping Handler) {
+    self.allowsWrites = allowsWrites
+    self.handler = handler
+  }
 
   public func start() async throws -> JSONValue {
     guard listener == nil else { throw HarnessError.message("Runtime bridge is already running.") }
@@ -121,7 +125,11 @@ public final class LocalRuntimeBridge {
       return
     }
     if request.path == "/tools" {
-      send(.object(["tools": .array(SpaceBuildTools.definitions)]), connection: connection, id: id)
+      send(
+        .object([
+          "tools": .array(
+            SpaceBuildTools.definitions + (allowsWrites ? [SpaceBuildTools.applyDefinition] : []))
+        ]), connection: connection, id: id)
       return
     }
     guard request.path == "/call",
@@ -138,6 +146,9 @@ public final class LocalRuntimeBridge {
       guard let self else { return }
       let result: JSONValue
       do {
+        if name == "tonk_apply" && !allowsWrites {
+          throw HarnessError.message("This runtime connection is read-only.")
+        }
         _ = try SpaceBuildTools.document(tool: name, arguments: value["arguments"])
         result = .object(["result": try await handler(name, value["arguments"])])
       } catch {
