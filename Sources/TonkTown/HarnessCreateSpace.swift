@@ -45,7 +45,8 @@ extension HarnessModel {
       }
       creatingSpace = false
       await send(
-        "I accepted the space proposal. Tonk Town created and attached ‘\(space.title)’ to this conversation. Continue my original request in this space."
+        "I accepted the space proposal. Tonk Town created and attached ‘\(space.title)’ to this conversation. Continue my original request in this space.",
+        showsUserMessage: false
       )
     } catch {
       if saved.conversation.spaceProposal == nil {

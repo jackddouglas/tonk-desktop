@@ -158,7 +158,7 @@ final class HarnessModel: ObservableObject {
     } catch { self.error = error.localizedDescription }
   }
 
-  func send(_ text: String) async {
+  func send(_ text: String, showsUserMessage: Bool = true) async {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard canSend, !trimmed.isEmpty else { return }
     busy = true
@@ -190,7 +190,9 @@ final class HarnessModel: ObservableObject {
       guard let threadID = saved.conversation.threadID else {
         throw HarnessError.message("No active conversation.")
       }
-      saved.conversation.messages.append(ChatMessage(role: "user", text: trimmed))
+      if showsUserMessage {
+        saved.conversation.messages.append(ChatMessage(role: "user", text: trimmed))
+      }
       persist()
       let result = try await client.request(
         "turn/start",

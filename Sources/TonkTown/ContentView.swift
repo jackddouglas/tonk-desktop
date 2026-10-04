@@ -100,7 +100,7 @@ struct ContentView: View {
                     Button(proposal.submitted ? "Check status" : "Create space") {
                       showRuntime = true
                       Task { await model.acceptSpaceProposal() }
-                    }.nativeControl(prominent: true).disabled(!model.canSend)
+                    }.disabled(!model.canSend)
                     Button(proposal.submitted ? "Dismiss" : "Not now") {
                       model.dismissSpaceProposal()
                     }
