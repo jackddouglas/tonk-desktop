@@ -16,7 +16,9 @@ struct TonkTownApp: App {
         .background(WindowAppearance())
         .task {
           delegate.model = model
+          delegate.runtime = runtime
           model.runtime = runtime
+          await runtime.startMCPBridge(root: model.root)
           runtime.load()
           await model.connect()
           if ProcessInfo.processInfo.arguments.contains("--smoke-test") {
@@ -51,10 +53,14 @@ private struct WindowAppearance: NSViewRepresentable {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
   weak var model: HarnessModel?
+  weak var runtime: RuntimeModel?
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
   }
-  func applicationWillTerminate(_ notification: Notification) { model?.shutdown() }
+  func applicationWillTerminate(_ notification: Notification) {
+    runtime?.stopMCPBridge()
+    model?.shutdown()
+  }
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }

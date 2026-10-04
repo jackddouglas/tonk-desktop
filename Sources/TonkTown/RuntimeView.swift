@@ -20,6 +20,8 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   var catalogBranch: String?
   var catalogTask: Task<Void, Never>?
   var callback: BrowserCallback?
+  var mcpBridge: LocalRuntimeBridge?
+  var mcpConnectionFile: URL?
   let webView: WKWebView
   let inspection = RuntimeInspection()
 

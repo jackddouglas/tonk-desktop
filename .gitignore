@@ -2,6 +2,7 @@
 .swiftpm/
 .DS_Store
 artifacts/
+node_modules/
 
 # Local agent working files
 /plans/
