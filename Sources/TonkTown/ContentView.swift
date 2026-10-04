@@ -51,10 +51,12 @@ struct ContentView: View {
       ScrollViewReader { reader in
         ScrollView {
           LazyVStack(alignment: .leading, spacing: 22) {
-            ForEach(model.saved.conversation.messages) { message in
+            ForEach(ChatTranscript.grouped(model.saved.conversation.messages)) { message in
               VStack(alignment: .leading, spacing: 7) {
-                Text(message.role == "user" ? "You" : model.saved.profile.name)
-                  .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if message.role == "user" {
+                  Text("You")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                }
                 MessageMarkdown(text: message.text)
                   .frame(maxWidth: .infinity, alignment: .leading)
               }
