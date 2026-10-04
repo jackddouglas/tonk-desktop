@@ -21,6 +21,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   var catalogTask: Task<Void, Never>?
   var callback: BrowserCallback?
   let webView: WKWebView
+  let inspection = RuntimeInspection()
 
   override init() {
     let configuration = WKWebViewConfiguration()
@@ -31,6 +32,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     // The native picker can cover/detach this view while still querying its worker.
     configuration.preferences.inactiveSchedulingPolicy = .none
     configuration.limitsNavigationsToAppBoundDomains = true
+    inspection.install(on: configuration.userContentController)
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
     webView.navigationDelegate = self
@@ -46,6 +48,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+    inspection.reset()
     loading = true
     error = nil
   }

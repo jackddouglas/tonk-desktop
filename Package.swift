@@ -9,5 +9,6 @@ let package = Package(
     .target(name: "HarnessCore"),
     .executableTarget(name: "TonkTown", dependencies: ["HarnessCore"]),
     .testTarget(name: "HarnessCoreTests", dependencies: ["HarnessCore"]),
+    .testTarget(name: "TonkTownTests", dependencies: ["TonkTown"]),
   ]
 )

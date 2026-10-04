@@ -5,6 +5,13 @@ import XCTest
 
 final class SpaceToolsTests: XCTestCase {
   func testRejectsTargetOverridesAndInvalidWrites() throws {
+    XCTAssertNil(try SpaceTools.validate(tool: "tonk_inspect_view", arguments: .object([:])))
+    for key in ["space", "url", "script", "selector"] {
+      XCTAssertThrowsError(
+        try SpaceTools.validate(
+          tool: "tonk_inspect_view",
+          arguments: .object([key: .string("override")])))
+    }
     XCTAssertNil(try SpaceTools.validate(tool: "tonk_space_info", arguments: .object([:])))
     XCTAssertEqual(
       try SpaceTools.validate(
