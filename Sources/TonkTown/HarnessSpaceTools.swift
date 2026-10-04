@@ -39,11 +39,11 @@ extension HarnessModel {
         let tool = params["tool"].string
       else { throw HarnessError.message("No matching active turn with an attached space.") }
       if tool == "tonk_cli" {
-        let arguments = try CLITools.arguments(params["arguments"])
+        _ = try CLITools.arguments(params["arguments"])
         let cli = try await prepareCLI(for: space, runtime: runtime)
         activity = "Using Tonk CLI"
         toolActivity.append("CLI: " + (params["arguments"]["operation"].string ?? ""))
-        let output = try await cli.run(arguments)
+        let output = try await cli.executeTool(params["arguments"])
         try Task.checkCancellation()
         activity = "Thinking"
         toolActivity.append("CLI operation completed")

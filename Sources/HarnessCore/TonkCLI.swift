@@ -10,6 +10,7 @@ public final class TonkCLI {
   public let subject: String
   private var running = false
   private var preparing = false
+  private var usingTool = false
 
   public init(root: URL, subject: String) {
     self.subject = subject
@@ -65,6 +66,20 @@ public final class TonkCLI {
     _ = try await run(["join", retained, "--name", "attached"], privateOutput: true)
     try verifyBinding()
     try FileManager.default.removeItem(at: pending)
+  }
+
+  /// Read the shared state before returning records or schema to the model.
+  public func executeTool(_ value: JSONValue) async throws -> String {
+    let arguments = try CLITools.arguments(value)
+    guard !usingTool else { throw HarnessError.message("A CLI tool is already running.") }
+    usingTool = true
+    defer { usingTool = false }
+    try verifyBinding()
+    if value["operation"].string == "query" || value["operation"].string == "show" {
+      _ = try await run(["--space", "attached", "pull"])
+      try Task.checkCancellation()
+    }
+    return try await run(arguments)
   }
 
   public func status() async throws -> String {

@@ -62,13 +62,12 @@ separately delegated CLI identity. Tool activity is visible in the conversation.
 Stop cancels pending responses, but cannot undo a write already submitted.
 
 Shell tools, web search, and multi-agent execution are disabled; unsupported
-server requests are declined. Record-content inspection, building tools, CLI
-sync, and shared collaboration remain future work.
+server requests are declined. Scoped CLI record inspection, authoring, and sync are verified on staging;
+shared collaboration remains future work.
 
 Tonk assets load from `https://tonk.network`; they are not bundled from the
 neighboring Rust checkout. The embedded web profile is separate from Safari
-and from the CLI's replica and identity. Browser-assisted Tonk sign-in is verified. In-app passkey ceremonies, CLI sync,
-offline startup, and collaboration remain unverified.
+and from the CLI's replica and identity. Browser-assisted Tonk sign-in is verified. In-app passkey ceremonies, offline startup, and collaboration remain unverified.
 
 ## Local data
 
@@ -160,3 +159,8 @@ their original tool set.
 The staging experiment has verified a real model-driven checklist edit in the
 native runtime. The installed CLI currently emits an account-directory warning
 for this isolated connection, even though content sync and rendering succeed.
+
+The interactive authoring experiment verifies
+model-built checkboxes and an agent refinement preserving a manual completion.
+CLI schema/record reads now pull first and fail if synchronization fails, rather
+than returning a stale local replica as current shared state.

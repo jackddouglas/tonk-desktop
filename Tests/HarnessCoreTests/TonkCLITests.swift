@@ -5,6 +5,46 @@ import XCTest
 
 @MainActor
 final class TonkCLITests: XCTestCase {
+  func testToolReadPullsFirstAndDoesNotReadAfterFailedPull() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let cli = TonkCLI(root: root, subject: "did:key:zScratch")
+    try FileManager.default.createDirectory(at: cli.state, withIntermediateDirectories: true)
+    let registry =
+      "{\"spaces\":{\"attached\":{\"connection\":{\"subject\":\"did:key:zScratch\",\"version\":1,\"recipient\":\"did:key:zTool\"}}}}"
+    try Data(registry.utf8).write(to: cli.state.appendingPathComponent("spaces.json"))
+    let script = root.appendingPathComponent("fixture")
+    try Data(
+      """
+      #!/bin/sh
+      printf '%s\\n' "$3" >> "$TONK_SPACES_STATE/calls"
+      if [ "$3" = pull ]; then
+        [ ! -f "$TONK_SPACES_STATE/fail" ] || exit 1
+        printf current > "$TONK_SPACES_STATE/record"
+      else
+        cat "$TONK_SPACES_STATE/record"
+      fi
+      """.utf8
+    ).write(to: script)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
+    setenv("TONK_TOWN_TONK", script.path, 1)
+    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    for operation in ["query", "show"] {
+      let request: JSONValue = .object(["operation": .string(operation), "target": .string("task")])
+      let result = try await cli.executeTool(request)
+      XCTAssertEqual(result, "current")
+    }
+    try Data().write(to: cli.state.appendingPathComponent("fail"))
+    do {
+      _ = try await cli.executeTool(
+        .object(["operation": .string("query"), "target": .string("task")]))
+      XCTFail("Must not report stale data after a failed pull")
+    } catch {}
+    let calls = try String(contentsOf: cli.state.appendingPathComponent("calls"), encoding: .utf8)
+    XCTAssertEqual(calls, "pull\nquery\npull\nshow\npull\n")
+  }
+
   func testAutomaticSetupImportsOnceAndReusesConnection() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
