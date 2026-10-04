@@ -4,7 +4,14 @@ import HarnessCore
 @MainActor
 extension HarnessModel {
   var spaceInstructions: String {
-    guard let space = saved.conversation.space else { return "\nNo Tonk space is attached." }
+    guard let space = saved.conversation.space else {
+      return """
+        No Tonk space is attached. When the user wants a durable artifact or workspace,
+        use tonk_propose_space with a short name and reason. This displays a native
+        approval card, not a created space. Stop after proposing and wait for acceptance.
+        All other space tools are unavailable until a space is attached.
+        """
+    }
     return """
 
       Attached Tonk space: \(space.subject).
@@ -14,15 +21,19 @@ extension HarnessModel {
       does not prove records exist; truncation is not a complete inventory.
       The harness connects space tools automatically. tonk_cli can inspect, preview, and apply notation
       to this attached space. Read the notation/views guides and existing schema first.
+      Entity references must use exact saved URIs. YAML anchors name references within
+      a document; they do not create id:name identities. Use explicit this: id:name
+      for stable IDs, or query the generated IDs before referring to existing records.
+      Prefer native checkbox inputs and dom.event.current-target/checked for simple toggles.
       Preview before applying. Apply only changes requested by the user; read records
       back after applying. The app runtime is the visual proof; CLI success alone is not.
-      CLI read operations inspect the local replica; apply automatically pulls then pushes.
+      CLI reads pull current shared state first; apply automatically pulls then pushes.
       Do not issue account, grant, invitation, or filesystem operations through notation. You cannot choose another target or access other spaces.
       """
   }
 
   func attachSpace(_ space: TonkSpace) {
-    guard !busy else { return }
+    guard !busy, !creatingSpace else { return }
     newConversation()
     // newConversation preserves the old conversation if archival fails.
     guard saved.conversation.threadID == nil, saved.conversation.messages.isEmpty else { return }
@@ -35,9 +46,30 @@ extension HarnessModel {
       guard busy, params["threadId"].string == saved.conversation.threadID,
         let requestTurn = params["turnId"].string, requestTurn == activeTurnID,
         params["namespace"] == .null,
-        let space = saved.conversation.space, let runtime,
         let tool = params["tool"].string
-      else { throw HarnessError.message("No matching active turn with an attached space.") }
+      else { throw HarnessError.message("No matching active turn.") }
+      if tool == "tonk_propose_space" {
+        guard saved.conversation.space == nil, !creatingSpace else {
+          throw HarnessError.message("This conversation already has a space or is creating one.")
+        }
+        let proposal = try SpaceProposal(arguments: params["arguments"])
+        guard saved.conversation.spaceProposal == nil else {
+          return SpaceTools.response(
+            "A proposal is already waiting for the user. Stop and wait.", success: true)
+        }
+        var next = saved
+        next.conversation.spaceProposal = proposal
+        try store.save(next)
+        saved = next
+        spaceCreationError = nil
+        return SpaceTools.response(
+          "Proposal shown. No space has been created. Stop and wait for the user to accept or dismiss the native card.",
+          success: true)
+      }
+      guard let space = saved.conversation.space, let runtime else {
+        throw HarnessError.message(
+          "No space is attached. Propose one and wait for acceptance first.")
+      }
       if tool == "tonk_cli" {
         _ = try CLITools.arguments(params["arguments"])
         let cli = try await prepareCLI(for: space, runtime: runtime)

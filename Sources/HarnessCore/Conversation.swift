@@ -12,11 +12,22 @@ public struct ChatMessage: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct Conversation: Codable, Equatable, Sendable {
+  public var spaceProposal: SpaceProposal?
   public var space: TonkSpace?
   public var threadID: String?
   public var lastTurnStatus: String?
   public var messages: [ChatMessage] = []
   public init() {}
+
+  public mutating func attachCreatedSpace(_ space: TonkSpace, proposalID: String) throws {
+    guard self.space == nil, let proposal = spaceProposal,
+      proposal.id == proposalID, proposal.submitted
+    else {
+      throw HarnessError.message("The space creation no longer matches this conversation.")
+    }
+    self.space = space
+    spaceProposal = nil
+  }
 
   public mutating func appendDelta(itemID: String, text: String) {
     if let index = messages.firstIndex(where: { $0.id == itemID }) {

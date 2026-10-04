@@ -22,7 +22,7 @@ struct ContentView: View {
         } label: {
           Label("New conversation", systemImage: "square.and.pencil")
         }
-        .disabled(model.busy).help("New conversation")
+        .disabled(model.busy || model.creatingSpace).help("New conversation")
       }
       ToolbarItem {
         Button {
@@ -30,7 +30,7 @@ struct ContentView: View {
         } label: {
           Label("Agent personality", systemImage: "person.crop.circle")
         }
-        .disabled(model.busy).help("Agent personality")
+        .disabled(model.busy || model.creatingSpace).help("Agent personality")
       }
       ToolbarItem {
         Button {
@@ -83,6 +83,33 @@ struct ContentView: View {
                 }
               }.font(.caption)
             }
+            if let proposal = model.saved.conversation.spaceProposal {
+              VStack(alignment: .leading, spacing: 10) {
+                Text("Create “\(proposal.name)”?").font(.headline)
+                Text(proposal.reason).foregroundStyle(.secondary)
+                if let error = model.spaceCreationError {
+                  Text(error).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                if model.creatingSpace {
+                  HStack {
+                    ProgressView().controlSize(.small)
+                    Text("Creating space…")
+                  }
+                } else {
+                  HStack {
+                    Button(proposal.submitted ? "Check status" : "Create space") {
+                      showRuntime = true
+                      Task { await model.acceptSpaceProposal() }
+                    }.nativeControl(prominent: true).disabled(!model.canSend)
+                    Button(proposal.submitted ? "Dismiss" : "Not now") {
+                      model.dismissSpaceProposal()
+                    }
+                    .disabled(model.busy || model.creatingSpace)
+                  }
+                }
+              }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 16))
+            }
             if model.busy {
               HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
@@ -110,7 +137,9 @@ struct ContentView: View {
 
     }
     .background(Color(nsColor: .textBackgroundColor))
-    .safeAreaInset(edge: .top, spacing: 0) { chatHeader.padding(12) }
+    .safeAreaInset(edge: .top, spacing: 0) {
+      chatHeader.padding(12).background(Color(nsColor: .textBackgroundColor))
+    }
     .safeAreaInset(edge: .bottom, spacing: 0) { composer }
   }
 
@@ -129,7 +158,8 @@ struct ContentView: View {
           Button("Reconnect") { Task { await model.connect() } }.disabled(model.connecting)
         } else if model.signedIn {
           Menu {
-            Button("Sign out") { Task { await model.signOut() } }.disabled(model.busy)
+            Button("Sign out") { Task { await model.signOut() } }.disabled(
+              model.busy || model.creatingSpace)
           } label: {
             Image(systemName: "ellipsis").frame(width: 20, height: 20)
           }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
@@ -243,7 +273,7 @@ struct ContentView: View {
           Spacer(minLength: 0)
           if let space = runtime.selectedSpace, model.saved.conversation.space?.id != space.id {
             Button("Use for chat") { model.attachSpace(space) }
-              .disabled(model.busy)
+              .disabled(model.busy || model.creatingSpace)
               .help("Start a new conversation with this space. Your current conversation is saved.")
           }
           if runtime.loading { ProgressView().controlSize(.small) }

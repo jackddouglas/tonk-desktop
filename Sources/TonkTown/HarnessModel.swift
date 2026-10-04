@@ -15,6 +15,8 @@ final class HarnessModel: ObservableObject {
   @Published var loginPending = false
   weak var runtime: RuntimeModel?
   var cliAdapters: [String: TonkCLI] = [:]
+  @Published var creatingSpace = false
+  @Published var spaceCreationError: String?
   @Published var toolActivity: [String] = []
   let client = AppServerClient()
   let root: URL
@@ -22,7 +24,7 @@ final class HarnessModel: ObservableObject {
   private var loginID: String?
   @Published private var turnID: String?
   var activeTurnID: String? { turnID }
-  private var resumed = false
+  var resumed = false
   private var saveTask: Task<Void, Never>?
   private var storageAvailable = true
 
@@ -60,7 +62,9 @@ final class HarnessModel: ObservableObject {
     }
   }
 
-  var canSend: Bool { connected && signedIn && !busy && !loginPending && storageAvailable }
+  var canSend: Bool {
+    connected && signedIn && !busy && !creatingSpace && !loginPending && storageAvailable
+  }
 
   func connect() async {
     guard !connecting else { return }
@@ -145,7 +149,7 @@ final class HarnessModel: ObservableObject {
   }
 
   func signOut() async {
-    guard !busy else { return }
+    guard !busy, !creatingSpace else { return }
     do {
       _ = try await client.request("account/logout")
       signedIn = false
@@ -174,9 +178,8 @@ final class HarnessModel: ObservableObject {
           resumed = true
         }
       } else {
-        if saved.conversation.space != nil {
-          parameters["dynamicTools"] = .array(SpaceTools.definitions.array + [CLITools.definition])
-        }
+        parameters["dynamicTools"] = .array(
+          SpaceTools.definitions.array + [CLITools.definition, SpaceProposal.definition])
         let result = try await client.request("thread/start", params: .object(parameters))
         guard let threadID = result["thread"]["id"].string else {
           throw HarnessError.message("The agent did not create a conversation.")
@@ -229,7 +232,7 @@ final class HarnessModel: ObservableObject {
   var canStop: Bool { busy && turnID != nil }
 
   func newConversation() {
-    guard !busy else { return }
+    guard !busy, !creatingSpace else { return }
     // Keep previous local transcripts, even though this first UI shows only the active one.
     do {
       if !saved.conversation.messages.isEmpty {
@@ -245,7 +248,7 @@ final class HarnessModel: ObservableObject {
   }
 
   func updateProfile(_ profile: AgentProfile) {
-    guard !busy else { return }
+    guard !busy, !creatingSpace else { return }
     saved.profile = profile
     resumed = false  // Reapply developer instructions on the next resume.
     persist()

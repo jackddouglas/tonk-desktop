@@ -35,7 +35,12 @@ that enables Tonk's service-worker domain in the embedded web view.
    a device grant to the embedded worker. Account sign-in, space-list hydration,
    and persistence after reopening are verified; see
    the authentication plan.
-6. Open a space and click **Use for chat** to start a conversation attached to it.
+6. In a **new conversation**, ask Robin to build something durable. Robin can offer
+   a named space in the chat. **Create space** creates and attaches it to the same
+   conversation, then Robin continues your request. **Not now** dismisses the
+   proposal without creating anything. This tool is available on newly started
+   threads; existing threads retain their original tools.
+7. Open a space and click **Use for chat** to start a conversation attached to it.
    Ask Robin to inspect its schema or rename it. The previous conversation is archived;
    browsing another space does not change the attachment.
 
