@@ -1,3 +1,4 @@
+import HarnessCore
 import WebKit
 import XCTest
 
@@ -5,6 +6,27 @@ import XCTest
 
 @MainActor
 final class RuntimeInspectionTests: XCTestCase {
+  func testInspectionRequiresCatalogMembershipAndMatchingOpenPreview() async throws {
+    let space = try XCTUnwrap(
+      TonkSpace.decodeCatalog(
+        Data("[{\"subject\":\"did:key:z123\",\"name\":\"Fixture\"}]".utf8)
+      ).first)
+    let runtime = RuntimeModel()
+    runtime.loading = false
+    runtime.catalogLoaded = true
+    runtime.catalogBranch = "main"
+    for stage in 0..<3 {
+      if stage == 1 { runtime.spaces = [space] }
+      if stage == 2 { runtime.selectedSpace = space }
+      do {
+        _ = try await runtime.inspectView(space)
+        XCTFail("Must reject missing membership, selection, or matching loaded URL")
+      } catch {
+        XCTAssertTrue(error is HarnessError)
+      }
+    }
+  }
+
   func testSandboxedFramesAndControlState() async throws {
     let inspector = RuntimeInspection()
     let configuration = WKWebViewConfiguration()

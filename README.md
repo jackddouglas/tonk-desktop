@@ -57,9 +57,13 @@ executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 - Browser ChatGPT login and cancellation, with an isolated Codex profile.
 - Interactive hosted Tonk runtime with persistent web storage and reload.
 
-New attached conversations expose three native tools: inspect the space identity,
-name and branch names; list named concepts and typed fields on `main`; and rename
-it with worker readback. Schema inspection includes runtime concepts, reports
+New attached conversations can inspect space identity and branch names, list
+named concepts and typed fields on `main`, rename with worker readback, and use
+`tonk_inspect_view` to read the open preview's rendered text and control states.
+Preview inspection includes bounded uncaught errors from nested sandboxed frames;
+WebKit may redact error details. It is not a screenshot or an interaction test.
+It accepts no target or JavaScript arguments and requires the attached space to
+be open in the preview. Schema inspection includes runtime concepts, reports
 truncation, and does not read records. Existing threads retain their original
 tool set: start a new conversation and use **Use for chat** to get the schema tool. The native app fixes the
 target; this is an application boundary using the signed-in worker, not a
