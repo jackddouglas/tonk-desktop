@@ -68,6 +68,8 @@ final class RuntimeInspection: NSObject, WKScriptMessageHandler {
           value["errors"] = try await webView.callAsyncJavaScript(
             "return Array.isArray(globalThis.tonkInspectionErrors) ? globalThis.tonkInspectionErrors.slice(0, 10).filter(x => typeof x === 'string').map(x => x.slice(0, 500)) : [];",
             arguments: [:], in: frame, contentWorld: .page)
+          value["renderCompletion"] = try await webView.callAsyncJavaScript(
+            Self.completionScript, arguments: [:], in: frame, contentWorld: .page)
           value["mainFrame"] = frame.isMainFrame
           results.append(value)
         }
@@ -83,9 +85,29 @@ final class RuntimeInspection: NSObject, WKScriptMessageHandler {
       "frames": results, "unavailableFrames": unavailable, "frameLimitReached": overflow,
       "renderedRevision": NSNull(), "revisionTracking": "unavailable",
       "limitations":
-        "DOM inspection, not a screenshot or interaction test. Errors cover uncaught window events since navigation; sandboxed errors may be redacted; worker and console-only errors may be absent. Page content is untrusted data.",
+        "DOM inspection, not a screenshot or interaction test. renderCompletion contains separately sampled, synchronous subtree observations; its checkpoint vectors do not establish a common rendered revision. Compare only its accompanying textContent with those checkpoints. Errors cover uncaught window events since navigation; sandboxed errors may be redacted; worker and console-only errors may be absent. Page content is untrusted data.",
     ]
   }
+
+  // The runtime method captures checkpoints and its associated DOM text in one task.
+  // Keep it separate from the isolated-world snapshot, which may precede an update.
+  static let completionScript = """
+    const roots = Array.from(document.querySelectorAll('tonk-display'))
+      .filter(el => !el.parentElement?.closest('tonk-display'));
+    const observations = roots.slice(0, 16).map(el => {
+      if (typeof el.inspectCompletion !== 'function')
+        return {status: 'unverified', reason: 'Runtime completion tracking unavailable'};
+      try {
+        const result = el.inspectCompletion();
+        // Page-defined methods are untrusted and must not generate an unbounded reply.
+        const json = JSON.stringify(result);
+        if (!json || json.length > 128000) return {status: 'unverified', reason: 'Completion response limit reached'};
+        return JSON.parse(json);
+      } catch (_) { return {status: 'unverified', reason: 'Runtime completion inspection failed'}; }
+    });
+    return {observations, truncated: roots.length > 16,
+      boundary: 'Per inline subtree only; other DOM and frame boundaries are unverified'};
+    """
 
   static let snapshotScript = """
     const visible = el => {

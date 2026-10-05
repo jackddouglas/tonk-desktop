@@ -38,6 +38,13 @@ final class RuntimeInspectionTests: XCTestCase {
       """
       <html><body><h1>Outer fixture</h1>
       <script>setTimeout(() => { throw new Error("outer failure"); }, 100);</script>
+      <tonk-display id="tracked">Before observation</tonk-display>
+      <script>
+        document.getElementById('tracked').inspectCompletion = function() {
+          this.textContent = 'Same-task observation';
+          return {status: 'complete', textContent: this.textContent, displays: []};
+        };
+      </script>
       <div hidden>HIDDEN_SENTINEL</div>
       <input type="password" value="PASSWORD_SENTINEL">
       <iframe sandbox="allow-scripts" srcdoc="<html><body><label><input type='checkbox' checked>Pack food</label><button>Save</button><script>setTimeout(() => { throw new Error('fixture failure'); }, 100);</script></body></html>"></iframe>
@@ -60,6 +67,10 @@ final class RuntimeInspectionTests: XCTestCase {
     XCTAssertEqual(result["revisionTracking"] as? String, "unavailable")
     let encoded = String(
       decoding: try JSONSerialization.data(withJSONObject: result), as: UTF8.self)
+    let main = try XCTUnwrap(frames.first { $0["mainFrame"] as? Bool == true })
+    let completion = try XCTUnwrap(main["renderCompletion"] as? [String: Any])
+    let observations = try XCTUnwrap(completion["observations"] as? [[String: Any]])
+    XCTAssertEqual(observations.first?["textContent"] as? String, "Same-task observation")
     XCTAssertTrue(encoded.contains("Outer fixture"))
     XCTAssertTrue(encoded.contains("Pack food"))
     XCTAssertTrue(encoded.contains("outer failure"), encoded)
