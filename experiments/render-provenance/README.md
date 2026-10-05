@@ -178,3 +178,11 @@ its dependency-free Rust test model. Seven native tests cover pending child
 work, stale generation/input tickets and conservative receipt invalidation.
 This model is not wired into the browser renderer; that adapter is the next
 explicit test boundary. No generic rendered revision is exposed.
+
+## First real nested browser case
+
+[nested-browser.md](nested-browser.md) records a test-only adapter over real
+parent/child displays and controlled input delivery. Apply its incremental patch
+after the transport patch. The focused browser test and all 28 display-hook tests
+passed. This extends the native contract evidence to actual DOM mounting, but
+still does not establish stale-callback rejection or a generic production receipt.
