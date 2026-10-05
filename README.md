@@ -1,13 +1,15 @@
 # Tonk Town
 
 A small native Mac harness: one personal agent beside the live Tonk runtime.
-SwiftUI owns the conversation and personality editor. Codex app-server owns
-ChatGPT authentication and inference. WKWebView runs Tonk's existing web app.
+SwiftUI owns the conversation and personality editor. ChatGPT uses Codex app-server;
+API-key providers and localhost models use a direct streaming agent loop.
+WKWebView runs Tonk's existing web app.
 
 ## Run
 
-Requires macOS 15+, Xcode command-line tools with Swift 6.0+, and the
-[Codex CLI](https://learn.chatgpt.com/docs/cli). Developed with Swift 6.4 and
+Requires macOS 15+ and Xcode command-line tools with Swift 6.0+.
+ChatGPT subscription sign-in also requires the
+[Codex CLI](https://learn.chatgpt.com/docs/cli); API providers do not. Developed with Swift 6.4 and
 Codex CLI 0.159.3. Markdown rendering and native drag selection use Textual; SwiftPM resolves its dependencies.
 
 ```sh
@@ -48,6 +50,42 @@ The CLI is discovered at `/opt/homebrew/bin/codex`, `/usr/local/bin/codex`, or
 `~/.nix-profile/bin/codex`. To select another binary, launch the bundled
 executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 
+## Model providers
+
+Open Robin’s **… → Model provider…** menu (or press **Command-comma**).
+Keep ChatGPT subscription sign-in, or choose:
+
+- **Anthropic**: API key and model ID, using the Messages API.
+- **OpenRouter** or **Grok (xAI)**: API key and model ID.
+- **Local server**: an OpenAI-compatible streaming Chat Completions endpoint,
+  such as `http://localhost:1234/v1` or `http://localhost:11434/v1`, and the model
+  ID loaded by that server. The app connects to an existing server; it does not
+  download models or launch the model server. Keys are optional.
+- **Other OpenAI-compatible API**: a custom HTTPS base URL, model ID, and optional key.
+
+Keys are stored in macOS Keychain, separately from transcripts, and scoped to the
+provider and base URL. Leave the key blank to retain it; **Remove saved key** deletes
+it. Changing endpoint clears an unsaved key entry. Remote endpoints require HTTPS;
+HTTP is allowed only on loopback. Redirects are rejected rather than forwarding keys.
+
+API models stream Markdown replies and use the same pinned Tonk tools as ChatGPT.
+Disable **Enable Tonk tools** for a model that only supports text. Model IDs are
+entered explicitly, since availability depends on the provider and account.
+This first adapter supports text and function calling, not vision, provider-specific
+reasoning modes, or model discovery. Compatibility with every model routed through
+an OpenAI-compatible API is not assumed.
+
+Changing provider, model, endpoint, or tool settings archives the conversation and
+starts a fresh one, retaining its attached Tonk space. Earlier chat history is not
+forwarded to the new provider. API conversation history and completed tool results
+survive reopening. Interrupted tools are recorded as unknown outcomes and are not
+replayed automatically. Stop cannot undo a write already submitted. Each turn is
+limited to 24 model requests, with no automatic request retries.
+
+Protocol fixtures and localhost HTTP tests cover both wire formats, streaming,
+tool dispatch, cancellation, persistence, and switching. Real hosted-provider calls
+and actual local model weights still require a live configuration to verify.
+
 ## First increment
 
 - Streaming native chat, stop, errors, and reconnect.
@@ -85,7 +123,7 @@ and from the CLI's replica and identity. Browser-assisted Tonk sign-in is verifi
 
 `~/Library/Application Support/Tonk Town/` contains:
 
-- `state.json`: active transcript and personality.
+- `state.json`: active transcript, personality, provider settings, and API tool history (no API keys).
 - `Conversations/`: archived transcripts created by New conversation.
 - `Codex/`: this app's Codex profile, credentials, and server threads.
 - `Workspace/`: the agent's otherwise empty working directory.

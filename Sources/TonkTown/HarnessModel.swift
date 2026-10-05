@@ -19,18 +19,26 @@ final class HarnessModel: ObservableObject {
   @Published var spaceCreationError: String?
   @Published var toolActivity: [String] = []
   let client = AppServerClient()
+  let apiClient: APIModelClient
+  var apiTask: Task<Void, Never>?
+  var apiKey = ""
   let root: URL
   let store: StateStore
   private var loginID: String?
-  @Published private var turnID: String?
+  @Published var turnID: String?
   var activeTurnID: String? { turnID }
   var resumed = false
   private var saveTask: Task<Void, Never>?
-  private var storageAvailable = true
+  var storageAvailable = true
 
-  init() {
+  init(directory: URL? = nil, apiClient: APIModelClient? = nil) {
+    self.apiClient = apiClient ?? APIModelClient()
     let arguments = ProcessInfo.processInfo.arguments
-    if let index = arguments.firstIndex(of: "--data-dir"), arguments.indices.contains(index + 1) {
+    if let directory {
+      root = directory
+    } else if let index = arguments.firstIndex(of: "--data-dir"),
+      arguments.indices.contains(index + 1)
+    {
       root = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
     } else {
       root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -51,6 +59,7 @@ final class HarnessModel: ObservableObject {
     client.onNotification = { [weak self] method, params in self?.receive(method, params) }
     client.onDisconnect = { [weak self] message in
       guard let self else { return }
+      guard self.provider == .chatGPT else { return }
       self.connected = false
       self.busy = false
       self.resumed = false
@@ -73,11 +82,18 @@ final class HarnessModel: ObservableObject {
     if storageAvailable { error = nil }
     client.stop()
     connected = false
+    signedIn = false
+    apiKey = ""
+    accountLabel = "Not connected"
     resumed = false
     busy = false
     loginID = nil
     loginPending = false
     turnID = nil
+    if provider != .chatGPT {
+      do { try connectAPI() } catch { self.error = error.localizedDescription }
+      return
+    }
     do {
       let candidates = [
         ProcessInfo.processInfo.environment["TONK_TOWN_CODEX"],
@@ -105,6 +121,7 @@ final class HarnessModel: ObservableObject {
   }
 
   func refreshAccount() async throws {
+    guard provider == .chatGPT else { return }
     let result = try await client.request(
       "account/read", params: .object(["refreshToken": .bool(false)]))
     signedIn = result["account"]["type"].string == "chatgpt"
@@ -161,6 +178,10 @@ final class HarnessModel: ObservableObject {
   func send(_ text: String, showsUserMessage: Bool = true) async {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard canSend, !trimmed.isEmpty else { return }
+    if provider != .chatGPT {
+      sendAPI(trimmed, showsUserMessage: showsUserMessage)
+      return
+    }
     busy = true
     saved.conversation.lastTurnStatus = nil
     error = nil
@@ -216,6 +237,11 @@ final class HarnessModel: ObservableObject {
   }
 
   func stopTurn() async {
+    if let apiTask {
+      activity = "Stopping"
+      apiTask.cancel()
+      return
+    }
     client.cancelTools()
     guard let threadID = saved.conversation.threadID, let turnID else { return }
     activity = "Stopping"
@@ -267,6 +293,7 @@ final class HarnessModel: ObservableObject {
   func shutdown() {
     if busy { saved.conversation.lastTurnStatus = "interrupted" }
     persist()
+    apiTask?.cancel()
     client.stop()
   }
 

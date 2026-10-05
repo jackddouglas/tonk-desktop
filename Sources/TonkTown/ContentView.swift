@@ -6,6 +6,7 @@ struct ContentView: View {
   @ObservedObject var runtime: RuntimeModel
   @State private var draft = ""
   @State private var showPersonality = false
+  @State private var showProviderSettings = false
   @State private var sharingSpace: TonkSpace?
   @State private var showRuntime = true
   @FocusState private var composing: Bool
@@ -41,6 +42,9 @@ struct ContentView: View {
         }
         .help("Show or hide Tonk").keyboardShortcut("0", modifiers: [.command, .option])
       }
+    }
+    .sheet(isPresented: $showProviderSettings) {
+      ProviderSettingsView(model: model)
     }
     .sheet(item: $sharingSpace) { space in
       ShareSpaceView(runtime: runtime, space: space)
@@ -157,16 +161,20 @@ struct ContentView: View {
         Spacer()
         if !model.connected {
           Button("Reconnect") { Task { await model.connect() } }.disabled(model.connecting)
-        } else if model.signedIn {
-          Menu {
+        }
+        Menu {
+          Button("Model provider…") { showProviderSettings = true }
+            .keyboardShortcut(",", modifiers: .command)
+            .disabled(model.busy || model.creatingSpace || model.loginPending || model.connecting)
+          if model.provider == .chatGPT && model.signedIn {
             Button("Sign out") { Task { await model.signOut() } }.disabled(
               model.busy || model.creatingSpace)
-          } label: {
-            Image(systemName: "ellipsis").frame(width: 20, height: 20)
-          }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-            .frame(width: 32, height: 32).controlSurface(radius: 16)
-            .fixedSize().accessibilityLabel("Account options")
-        }
+          }
+        } label: {
+          Image(systemName: "ellipsis").frame(width: 20, height: 20)
+        }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+          .frame(width: 32, height: 32).controlSurface(radius: 16)
+          .fixedSize().accessibilityLabel("Account options")
       }.padding(.horizontal, 16).padding(.vertical, 12)
       if let space = model.saved.conversation.space {
         HStack {
@@ -196,7 +204,9 @@ struct ContentView: View {
           .bottom, 8)
       }
 
-      if model.connected && !model.signedIn {
+      if model.provider != .chatGPT && !model.signedIn {
+        Button("Configure model") { showProviderSettings = true }.padding(20)
+      } else if model.connected && !model.signedIn {
         VStack(spacing: 10) {
           if model.loginPending {
             ProgressView("Finish signing in in your browser")
