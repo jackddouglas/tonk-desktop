@@ -10,7 +10,7 @@ public enum SpaceBuildTools {
       key: "target"),
     definition(
       "tonk_preview",
-      "Validate inline Tonk notation against the preview's local replica without committing. Returns current query matches, not a rendered preview or a proposed-state diff.",
+      "Notation basics: concept: queries; concept!: asserts fields. To update an existing record, use concept!: with its exact this: URI and only the fields to change. Validate inline Tonk notation against the preview's local replica without committing. Returns current query matches, not a rendered preview or a proposed-state diff.",
       key: "document"),
   ]
 

@@ -315,7 +315,7 @@ struct ContentView: View {
             Spacer(minLength: 0)
             Button("Cancel") { runtime.cancelSignIn() }.disabled(runtime.attachingAccount)
           }
-        } else if !runtime.accountConnected {
+        } else if !runtime.accountConnected && RuntimeLocation.deployment != .local {
           HStack {
             if let message = runtime.accountMessage {
               Text(message).font(.caption).textSelection(.enabled)

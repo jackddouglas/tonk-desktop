@@ -7,6 +7,10 @@ extension RuntimeModel {
   func cancelSignIn() { callback?.cancel() }
 
   func signIn() async {
+    guard RuntimeLocation.deployment != .local else {
+      accountMessage = "The local test runtime uses local-only spaces."
+      return
+    }
     guard !signInPending else { return }
     signInPending = true
     accountMessage = nil
@@ -102,6 +106,8 @@ extension RuntimeModel {
       if (location.origin !== runtimeOrigin || !navigator.serviceWorker?.controller)
         throw new Error('The Tonk worker is not ready. Reload and try again.');
       async function api(path, body) {
+        if (runtimeOrigin === 'http://127.0.0.1:4187' && path.startsWith('/api/profile/branch/'))
+          path = path.replace('/api/profile/branch/', '/api/repository/profile:tonk/branch/');
         const response = await fetch(path, {
           method: body ? 'POST' : 'GET', headers: {'Content-Type': 'application/json'},
           body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(60000)

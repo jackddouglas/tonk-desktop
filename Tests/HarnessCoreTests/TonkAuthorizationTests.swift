@@ -4,6 +4,26 @@ import XCTest
 @testable import HarnessCore
 
 final class TonkAuthorizationTests: XCTestCase {
+  func testLocalRuntimeIsStrictlyIsolatedByOriginAndDataDirectory() {
+    let local = RuntimeLocation.Deployment.local
+    XCTAssertEqual(local.home.absoluteString, "http://127.0.0.1:4187")
+    XCTAssertNotEqual(local.dataDirectory, RuntimeLocation.Deployment.staging.dataDirectory)
+    XCTAssertNotEqual(local.dataDirectory, RuntimeLocation.Deployment.production.dataDirectory)
+    XCTAssertTrue(
+      RuntimeLocation.isEmbedded(local.home.appendingPathComponent("space/test"), deployment: local)
+    )
+    for value in [
+      "http://127.0.0.1:4188", "http://localhost:4187", "http://127.0.0.1",
+      "https://127.0.0.1:4187", "http://user@127.0.0.1:4187", "https://staging.tonk.xyz",
+      "https://tonk.network",
+    ] {
+      XCTAssertFalse(RuntimeLocation.isEmbedded(URL(string: value)!, deployment: local), value)
+    }
+    for deployment: RuntimeLocation.Deployment in [.production, .staging] {
+      XCTAssertFalse(RuntimeLocation.isEmbedded(local.home, deployment: deployment))
+    }
+  }
+
   func testDeploymentsRejectEachOthersAuthorization() throws {
     XCTAssertNoThrow(
       try TonkAuthorization(

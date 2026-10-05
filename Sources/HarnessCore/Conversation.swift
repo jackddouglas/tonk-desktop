@@ -98,15 +98,39 @@ public struct StateStore {
 
 public enum RuntimeLocation {
   public enum Deployment: Sendable {
-    case production, staging
-    public var host: String { self == .staging ? "staging.tonk.xyz" : "tonk.network" }
-    public var dataDirectory: String { self == .staging ? "Tonk Town Staging" : "Tonk Town" }
+    case production, staging, local
+    public var host: String {
+      switch self {
+      case .production: "tonk.network"
+      case .staging: "staging.tonk.xyz"
+      case .local: "127.0.0.1"
+      }
+    }
+    public var dataDirectory: String {
+      switch self {
+      case .production: "Tonk Town"
+      case .staging: "Tonk Town Staging"
+      case .local: "Tonk Town Local"
+      }
+    }
+    public var home: URL {
+      URL(string: self == .local ? "http://127.0.0.1:4187" : "https://" + host)!
+    }
+    public var title: String {
+      switch self {
+      case .production: "Tonk Town"
+      case .staging: "Tonk Town — Staging"
+      case .local: "Tonk Town — Local"
+      }
+    }
   }
   public static let deployment: Deployment =
-    ProcessInfo.processInfo.arguments.contains("--staging") ? .staging : .production
-  public static var home: URL { URL(string: "https://" + deployment.host)! }
+    ProcessInfo.processInfo.arguments.contains("--local-runtime")
+    ? .local : ProcessInfo.processInfo.arguments.contains("--staging") ? .staging : .production
+  public static var home: URL { deployment.home }
   public static func isEmbedded(_ url: URL, deployment: Deployment = deployment) -> Bool {
-    url.scheme == "https" && url.host == deployment.host && (url.port == nil || url.port == 443)
+    url.scheme == deployment.home.scheme && url.host == deployment.host
+      && (deployment == .local ? url.port == 4187 : url.port == nil || url.port == 443)
       && url.user == nil && url.password == nil
   }
   public static func isExternal(_ url: URL) -> Bool {

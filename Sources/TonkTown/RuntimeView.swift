@@ -19,6 +19,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   @Published var catalogError: String?
   var catalogBranch: String?
   var catalogTask: Task<Void, Never>?
+  var localFixtureStarted = false
   var callback: BrowserCallback?
   var mcpBridge: LocalRuntimeBridge?
   var mcpConnectionFile: URL?
@@ -27,10 +28,15 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
 
   override init() {
     let configuration = WKWebViewConfiguration()
-    configuration.websiteDataStore =
-      RuntimeLocation.deployment == .staging
-      ? WKWebsiteDataStore(forIdentifier: UUID(uuidString: "58BD1C91-3442-4CDA-9267-FD7B7C7A8A1D")!)
-      : .default()
+    switch RuntimeLocation.deployment {
+    case .production: configuration.websiteDataStore = .default()
+    case .staging:
+      configuration.websiteDataStore = WKWebsiteDataStore(
+        forIdentifier: UUID(uuidString: "58BD1C91-3442-4CDA-9267-FD7B7C7A8A1D")!)
+    case .local:
+      configuration.websiteDataStore = WKWebsiteDataStore(
+        forIdentifier: UUID(uuidString: "65D52CA2-3801-4DD8-9400-473F2335BCAE")!)
+    }
     // The native picker can cover/detach this view while still querying its worker.
     configuration.preferences.inactiveSchedulingPolicy = .none
     configuration.limitsNavigationsToAppBoundDomains = true
@@ -62,6 +68,7 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
       for _ in 0..<15 {
         guard !Task.isCancelled else { return }
         if let status = try? await probe(), status["health"] as? Bool == true {
+          await prepareLocalFixtureIfRequested()
           await refreshSpaces()
           if let account = try? await accountScript("return await api('/api/account');") {
             accountConnected = account["status"] as? String == "registered"

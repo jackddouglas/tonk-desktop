@@ -1,6 +1,20 @@
 import Foundation
 
 public enum SpaceTools {
+  /// Adapt shared MCP/native schemas to the app-server's canonical function envelope.
+  public static func agentDefinitions(includeCLI: Bool) -> [JSONValue] {
+    let tools =
+      definitions.array + SpaceBuildTools.definitions
+      + [SpaceBuildTools.applyDefinition, SpaceProposal.definition]
+      + (includeCLI ? [CLITools.definition] : [])
+    return tools.map { tool in
+      .object([
+        "type": .string("function"), "name": tool["name"],
+        "description": tool["description"], "inputSchema": tool["inputSchema"],
+      ])
+    }
+  }
+
   public static let inspectionDefinition: JSONValue = .object([
     "name": .string("tonk_inspect_view"),
     "description": .string(

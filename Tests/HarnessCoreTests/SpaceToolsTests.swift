@@ -4,6 +4,22 @@ import XCTest
 @testable import HarnessCore
 
 final class SpaceToolsTests: XCTestCase {
+  func testAgentToolEnvelopesAreConsistentAndLocalModeExcludesCLI() {
+    for includeCLI in [false, true] {
+      let tools = SpaceTools.agentDefinitions(includeCLI: includeCLI)
+      XCTAssertEqual(tools.contains { $0["name"].string == "tonk_cli" }, includeCLI)
+      XCTAssertTrue(tools.contains { $0["name"].string == "tonk_apply" })
+      XCTAssertTrue(tools.contains { $0["name"].string == "tonk_inspect_view" })
+      for tool in tools {
+        XCTAssertEqual(tool["type"].string, "function")
+        XCTAssertNotNil(tool["name"].string)
+        XCTAssertNotNil(tool["description"].string)
+        XCTAssertEqual(tool["inputSchema"]["type"].string, "object")
+        XCTAssertEqual(tool["annotations"], .null)
+      }
+    }
+  }
+
   func testRejectsTargetOverridesAndInvalidWrites() throws {
     XCTAssertNil(try SpaceTools.validate(tool: "tonk_inspect_view", arguments: .object([:])))
     for key in ["space", "url", "script", "selector"] {

@@ -58,3 +58,23 @@ Scope: real browser worker/storage and rendered DOM evidence. This does not
 prove that a ChatGPT turn, native WKWebView, or external MCP client performed
 the edit. Nor does it establish a generic revision-to-render completion protocol:
 the script returns `renderingConfirmed: false` until the independent DOM check.
+
+## Native local host
+
+With the same static server running, build the signed app and launch:
+
+```sh
+bash scripts/build-app.sh
+open '.build/Tonk Town.app' --args --local-runtime --seed-local-fixture
+```
+
+This uses separate local application and WebKit data and requires its own ChatGPT
+sign-in. It creates a disposable `Robin Local Build Test` space. Omit
+`--seed-local-fixture` on subsequent launches to reuse the existing space.
+Open it, choose **Use for chat**, then ask Robin to query `direct-build-task`,
+preview a status-only edit, apply using the exact preview revision, read it back,
+and inspect the open preview. The local host does not advertise the CLI tool.
+Boot, persistence across reopening, and a live ChatGPT-directed status edit have
+been checked. The agent recovered from a query-only no-op, then previewed an
+assertion, applied one claim, queried the saved value and inspected the new text
+without reloading. Inspection still does not provide a render revision receipt.
