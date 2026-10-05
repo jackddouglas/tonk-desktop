@@ -170,3 +170,11 @@ The full repository suite passed after COW: 466 passed, one benchmark ignored.
   tests and the benchmark. The redundant failing shared-target build was stopped.
 - No production deployment, dependency-pin update, full SSE-to-nested-render
   integration test, or generic render-completion receipt has been performed.
+
+## Nested completion contract
+
+The next prerequisite is captured in [render-barrier.md](render-barrier.md) and
+its dependency-free Rust test model. Seven native tests cover pending child
+work, stale generation/input tickets and conservative receipt invalidation.
+This model is not wired into the browser renderer; that adapter is the next
+explicit test boundary. No generic rendered revision is exposed.
