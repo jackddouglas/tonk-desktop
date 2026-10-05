@@ -12,6 +12,7 @@ public struct ChatMessage: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct Conversation: Codable, Equatable, Sendable {
+  public var apiHistory: [APIMessage]?
   public var spaceProposal: SpaceProposal?
   public var space: TonkSpace?
   public var threadID: String?
@@ -71,6 +72,8 @@ public struct AgentProfile: Codable, Equatable, Sendable {
 }
 
 public struct SavedState: Codable, Equatable, Sendable {
+  public var provider: ModelProvider?
+  public var connections: [String: ModelConnection]?
   public var profile = AgentProfile()
   public var conversation = Conversation()
   public init() {}
