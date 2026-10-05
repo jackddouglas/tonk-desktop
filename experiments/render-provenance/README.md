@@ -186,3 +186,11 @@ parent/child displays and controlled input delivery. Apply its incremental patch
 after the transport patch. The focused browser test and all 28 display-hook tests
 passed. This extends the native contract evidence to actual DOM mounting, but
 still does not establish stale-callback rejection or a generic production receipt.
+
+## Delayed transport callback regression
+
+[subscription-attempt.md](subscription-attempt.md) records a reproduced race in
+pending subscription opens and its host-local fix. An older fetch could complete
+after navigation and replace the newer stream. Registry attempt identities now
+reject obsolete callbacks, late handles and retry timers. This avoids adding a
+public renderer protocol solely to solve this host race.
