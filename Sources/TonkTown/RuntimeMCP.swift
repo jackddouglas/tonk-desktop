@@ -10,7 +10,9 @@ extension RuntimeModel {
       arguments.indices.contains(index + 1)
     else { return }
     let subject = arguments[index + 1]
-    let bridge = LocalRuntimeBridge(allowsWrites: arguments.contains("--mcp-write")) {
+    let bridge = LocalRuntimeBridge(
+      allowsWrites: arguments.contains("--mcp-write"), supportsInspection: true
+    ) {
       [weak self] name, arguments in
       guard let self, let space = self.spaces.first(where: { $0.subject == subject }) else {
         throw HarnessError.message("The configured MCP space is unavailable in this account.")

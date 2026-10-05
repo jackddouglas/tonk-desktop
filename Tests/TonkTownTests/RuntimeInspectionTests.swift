@@ -19,7 +19,8 @@ final class RuntimeInspectionTests: XCTestCase {
       if stage == 1 { runtime.spaces = [space] }
       if stage == 2 { runtime.selectedSpace = space }
       do {
-        _ = try await runtime.inspectView(space)
+        _ = try await runtime.performBuildTool(
+          space, tool: "tonk_inspect_view", arguments: .object([:]))
         XCTFail("Must reject missing membership, selection, or matching loaded URL")
       } catch {
         XCTAssertTrue(error is HarnessError)
@@ -55,6 +56,8 @@ final class RuntimeInspectionTests: XCTestCase {
     }
     let frames = try XCTUnwrap(result["frames"] as? [[String: Any]])
     XCTAssertEqual(frames.count, 2)
+    XCTAssertTrue(result["renderedRevision"] is NSNull)
+    XCTAssertEqual(result["revisionTracking"] as? String, "unavailable")
     let encoded = String(
       decoding: try JSONSerialization.data(withJSONObject: result), as: UTF8.self)
     XCTAssertTrue(encoded.contains("Outer fixture"))

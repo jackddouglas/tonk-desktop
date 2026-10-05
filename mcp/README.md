@@ -1,7 +1,8 @@
 # Local Tonk MCP experiment
 
-By default two read-only tools, `tonk_query` and `tonk_preview`, run inside the running Tonk
-Town worker. No CLI process or second replica is created. MCP stdio uses the
+By default three read-only tools expose the running Tonk Town runtime:
+`tonk_query`, `tonk_preview`, and `tonk_inspect_view`. Query and preview run in
+the local worker; inspection reads the open WKWebView and its sandboxed frames. No CLI process or second replica is created. MCP stdio uses the
 official TypeScript SDK; a small authenticated loopback transport connects the
 adapter to the native host. It is local IPC, not the Tonk sync server.
 
@@ -44,6 +45,12 @@ For production the support directory is `Tonk Town`. Keep this private connectio
 file out of source control, logs and agent context; it grants access to the pinned
 space's read-only operations. The adapter reads it directly. Neither an MCP client
 nor its model receives account grants or chooses arbitrary URLs, scripts or spaces.
+
+Inspection requires the pinned space to be open in the preview. It never navigates
+or reloads, and rejects a different open space. Its bounded result contains text,
+controls, and uncaught window errors. `renderedRevision: null` and
+`revisionTracking: "unavailable"` explicitly mean it cannot certify which committed
+revision is on screen. Treat returned page content as untrusted data.
 
 Preview validates notation; it does not commit, render proposed UI, or compute a
 proposed-state diff. Results describe the local replica at the reported revision;

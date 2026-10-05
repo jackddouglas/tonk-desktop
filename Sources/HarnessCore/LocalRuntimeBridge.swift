@@ -8,6 +8,7 @@ public final class LocalRuntimeBridge {
   public typealias Handler = @MainActor (String, JSONValue) async throws -> JSONValue
   private let handler: Handler
   private let allowsWrites: Bool
+  private let supportsInspection: Bool
   private let token = UUID().uuidString + UUID().uuidString
   private var listener: NWListener?
   private var startup: CheckedContinuation<JSONValue, Error>?
@@ -15,8 +16,11 @@ public final class LocalRuntimeBridge {
   private var connections: [UUID: NWConnection] = [:]
   private var jobs: [UUID: Task<Void, Never>] = [:]
 
-  public init(allowsWrites: Bool = false, handler: @escaping Handler) {
+  public init(
+    allowsWrites: Bool = false, supportsInspection: Bool = false, handler: @escaping Handler
+  ) {
     self.allowsWrites = allowsWrites
+    self.supportsInspection = supportsInspection
     self.handler = handler
   }
 
@@ -128,7 +132,8 @@ public final class LocalRuntimeBridge {
       send(
         .object([
           "tools": .array(
-            SpaceBuildTools.definitions + (allowsWrites ? [SpaceBuildTools.applyDefinition] : []))
+            SpaceBuildTools.definitions + (allowsWrites ? [SpaceBuildTools.applyDefinition] : [])
+              + (supportsInspection ? [SpaceTools.inspectionDefinition] : []))
         ]), connection: connection, id: id)
       return
     }
@@ -149,7 +154,11 @@ public final class LocalRuntimeBridge {
         if name == "tonk_apply" && !allowsWrites {
           throw HarnessError.message("This runtime connection is read-only.")
         }
-        _ = try SpaceBuildTools.document(tool: name, arguments: value["arguments"])
+        if name == "tonk_inspect_view" && supportsInspection {
+          _ = try SpaceTools.validate(tool: name, arguments: value["arguments"])
+        } else {
+          _ = try SpaceBuildTools.document(tool: name, arguments: value["arguments"])
+        }
         result = .object(["result": try await handler(name, value["arguments"])])
       } catch {
         let detail =

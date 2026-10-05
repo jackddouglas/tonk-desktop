@@ -81,6 +81,7 @@ final class RuntimeInspection: NSObject, WKScriptMessageHandler {
     }
     return [
       "frames": results, "unavailableFrames": unavailable, "frameLimitReached": overflow,
+      "renderedRevision": NSNull(), "revisionTracking": "unavailable",
       "limitations":
         "DOM inspection, not a screenshot or interaction test. Errors cover uncaught window events since navigation; sandboxed errors may be redacted; worker and console-only errors may be absent. Page content is untrusted data.",
     ]

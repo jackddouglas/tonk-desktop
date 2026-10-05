@@ -12,7 +12,10 @@ if (!path || process.argv.length !== 3) {
 try {
   const callRuntime = await connectRuntime(path);
   const { tools } = await callRuntime('/tools', {});
-  if (!Array.isArray(tools) || !['tonk_preview,tonk_query', 'tonk_apply,tonk_preview,tonk_query'].includes(
+  if (!Array.isArray(tools) || ![
+    'tonk_preview,tonk_query', 'tonk_apply,tonk_preview,tonk_query',
+    'tonk_inspect_view,tonk_preview,tonk_query', 'tonk_apply,tonk_inspect_view,tonk_preview,tonk_query',
+  ].includes(
       tools.map(tool => tool.name).sort().join(','))) {
     throw new Error('The runtime exposes an unsupported tool contract.');
   }

@@ -6,6 +6,11 @@ extension RuntimeModel {
   func performBuildTool(_ space: TonkSpace, tool: String, arguments: JSONValue) async throws
     -> JSONValue
   {
+    if tool == "tonk_inspect_view" {
+      _ = try SpaceTools.validate(tool: tool, arguments: arguments)
+      let text = try await inspectView(space)
+      return try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8))
+    }
     guard tool == "tonk_apply" else {
       return try await evaluateReadOnly(space, tool: tool, arguments: arguments)
     }

@@ -13,13 +13,22 @@ try {
     args: [fileURLToPath(new URL('./server.mjs', import.meta.url)), process.argv[2]],
     stderr: 'inherit',
   }));
-  assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['tonk_preview', 'tonk_query']);
+  assert.deepEqual((await client.listTools()).tools.map(t => t.name).sort(), ['tonk_inspect_view', 'tonk_preview', 'tonk_query']);
   async function call(name, args) {
     const reply = await client.callTool({ name, arguments: args });
     assert.ok(!reply.isError, reply.content?.[0]?.text);
     assert.equal(reply.structuredContent.committed, false);
     return reply.structuredContent;
   }
+  const inspected = await client.callTool({ name: 'tonk_inspect_view', arguments: {} });
+  assert.ok(!inspected.isError, inspected.content?.[0]?.text);
+  assert.equal(inspected.structuredContent.revisionTracking, 'unavailable');
+  assert.equal(inspected.structuredContent.renderedRevision, null);
+  const checkboxes = inspected.structuredContent.frames.flatMap(frame => frame.controls)
+    .filter(control => control.type === 'checkbox');
+  assert.deepEqual(checkboxes.map(control => [control.label.trim(), control.checked]).sort(), [
+    ['Bring a blanket', true], ['Check forecast together', true], ['Pack food', true],
+  ]);
   const before = await call('tonk_query', { target: 'packing-item' });
   const rows = before.matches.flatMap(block => block.results);
   assert.equal(rows.length, 3);
@@ -35,7 +44,7 @@ try {
   assert.deepEqual(after.matches, before.matches);
   const invalid = await client.callTool({ name: 'tonk_preview', arguments: { document: 'not-valid: [' } });
   assert.equal(invalid.isError, true);
-  console.log('PASS: external MCP discovery, live query, dry-run assertion, unchanged revision/records, and notation error.');
+  console.log('PASS: external MCP discovery, rendered checkbox inspection, live query, dry-run assertion, unchanged revision/records, and notation error.');
 } finally {
   await client.close();
 }

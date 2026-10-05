@@ -4,6 +4,36 @@ import XCTest
 
 @MainActor
 final class LocalRuntimeBridgeTests: XCTestCase {
+  func testInspectionCapabilityRejectsTargetOverrides() async throws {
+    var calls = 0
+    for enabled in [false, true] {
+      let bridge = LocalRuntimeBridge(supportsInspection: enabled) { name, arguments in
+        calls += 1
+        XCTAssertEqual(name, "tonk_inspect_view")
+        XCTAssertEqual(arguments, .object([:]))
+        return .object(["frames": .array([]), "revisionTracking": .string("unavailable")])
+      }
+      let config = try await bridge.start()
+      for arguments: JSONValue in [.object([:]), .object(["space": .string("other")])] {
+        var request = URLRequest(url: URL(string: config["url"].string! + "/call")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer " + config["token"].string!, forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(
+          JSONValue.object(["name": .string("tonk_inspect_view"), "arguments": arguments]))
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let value = try JSONDecoder().decode(JSONValue.self, from: data)
+        if enabled && arguments == .object([:]) {
+          XCTAssertEqual(value["result"]["revisionTracking"], .string("unavailable"))
+        } else {
+          XCTAssertNotNil(value["error"].string)
+        }
+      }
+      bridge.stop()
+    }
+    XCTAssertEqual(calls, 1)
+  }
+
   func testWriteCapabilityMustBeEnabledAndPassesExactRevision() async throws {
     let expected: JSONValue = .object(["tree": .string("preview")])
     let arguments: JSONValue = .object([
