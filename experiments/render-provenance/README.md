@@ -63,5 +63,7 @@ immutable/COW overlay snapshot may be preferable for large session overlays.
 - Candidate: all 47 subscription tests passed, including paused durable writes,
   paused overlay writes, empty-branch checkpoints and unrelated-write checkpoints.
 - Rust formatting and patch whitespace checks passed.
+- `cargo check -p dialog-repository --lib --target wasm32-unknown-unknown`
+  passed, with three warnings in unchanged dialog-storage code.
 - This is query-layer evidence only. No SSE delivery or DOM completion guarantee
   is implemented or implied, and the app's existing runtime is unchanged.
