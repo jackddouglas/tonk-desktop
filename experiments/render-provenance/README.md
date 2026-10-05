@@ -194,3 +194,12 @@ pending subscription opens and its host-local fix. An older fetch could complete
 after navigation and replace the newer stream. Registry attempt identities now
 reject obsolete callbacks, late handles and retry timers. This avoids adding a
 public renderer protocol solely to solve this host race.
+
+## Local runtime integration
+
+[runtime-completion.md](runtime-completion.md) supersedes the earlier test-only
+boundary for a restricted inline path. Its combined patch exposes synchronous
+subtree completion evidence in the real runtime and is installed in Tonk Town's
+local profile. Worker integration, native agent and service-worker smoke evidence
+are recorded there. Other render paths and a global rendered revision remain
+unverified; older entries above describe their respective checkpoints.

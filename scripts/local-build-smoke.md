@@ -78,3 +78,15 @@ Boot, persistence across reopening, and a live ChatGPT-directed status edit have
 been checked. The agent recovered from a query-only no-op, then previewed an
 assertion, applied one claim, queried the saved value and inspected the new text
 without reloading. Inspection still does not provide a render revision receipt.
+
+## Completion-feedback runtime
+
+The later local experiment in
+`experiments/render-provenance/runtime-completion.md` adds scoped observations to
+`tonk_inspect_view`. Use the combined runtime patch described there and serve its
+built assets. Ask the agent to compare each complete observation's checkpoint
+vector to the apply/query revision and to use only that observation's accompanying
+textContent. Unsupported observations and frames must be reported separately;
+global `renderedRevision` is still unavailable. Live status-only edits passed, including after a native restart on the final
+build. Read-only cold-load checks remained unverified because initial checkpoints
+were missing; both outcomes are recorded with the experiment evidence.
