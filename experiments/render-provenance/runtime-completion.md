@@ -104,8 +104,10 @@ production or staging data, dependency pins, or remote deployment were changed.
   also occurred after clean restart, without preceding error callbacks, so the
   per-input invalidation fix does not explain or solve it. A subsequent edit
   produced complete task evidence. Profile chrome remained unverified and two
-  frames unavailable. Initial streaming delivery is an open follow-up; no cause
-  or universal completion claim is established.
+  frames unavailable. This was the open issue at that checkpoint. The later
+  [cold-load experiment](cold-stream/README.md) reproduces a service-worker chunk
+  delivery stall and verifies ready-frame batching in build `c6f4686fc9e81247`.
+  Universal completion is still not claimed.
 - Combined patch passed forward application against its exact base using a
   temporary index, reverse application against the working experiment, and
   source whitespace checks. Local override configuration and lockfile are excluded.

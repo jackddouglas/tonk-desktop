@@ -203,3 +203,7 @@ subtree completion evidence in the real runtime and is installed in Tonk Town's
 local profile. Worker integration, native agent and service-worker smoke evidence
 are recorded there. Other render paths and a global rendered revision remain
 unverified; older entries above describe their respective checkpoints.
+
+The [cold-load follow-up](cold-stream/README.md) isolates idle service-worker chunk
+delivery in WKWebView and verifies bounded SSE batching, including clean native
+loads and conditional edits. Its worker fix is available as a separate patch.

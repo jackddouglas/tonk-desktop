@@ -90,3 +90,7 @@ textContent. Unsupported observations and frames must be reported separately;
 global `renderedRevision` is still unavailable. Live status-only edits passed, including after a native restart on the final
 build. Read-only cold-load checks remained unverified because initial checkpoints
 were missing; both outcomes are recorded with the experiment evidence.
+
+The follow-up cold-load fix and opt-in WKWebView regression are documented in
+`experiments/render-provenance/cold-stream/README.md`. The retained batching build
+passed first load, reloads, and edit-to-feedback checks in three fresh stores.
