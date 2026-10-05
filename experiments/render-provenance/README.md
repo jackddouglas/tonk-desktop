@@ -14,7 +14,8 @@ commits a name change through the original branch, then releases evaluation. The
 expected contract is old rows at the old pin, followed by new rows at the next
 poll. This is a prerequisite to exposing a query checkpoint on SSE.
 
-No renderer receipt or new worker protocol is enabled by this experiment.
+The companion transport patch is opt-in. Neither patch is enabled in the app or
+its pinned dependencies, and neither provides a renderer completion receipt.
 
 The subsequent protocol needs three distinct pieces of evidence:
 
@@ -52,9 +53,11 @@ content-addressed caches. Idle polls keep their existing early return. A public
 empty branch, and advances even for unchanged query results. Concurrent head
 changes during synchronous capture cause a bounded read retry, never a write.
 
-Cost to assess before adoption: active polls currently clone the overlay's fact
-indexes and bounded instant log. No performance improvement is claimed. A shared
-immutable/COW overlay snapshot may be preferable for large session overlays.
+The candidate now shares immutable overlay state. Mutation uses copy-on-write
+while a detached snapshot retains that state. This avoids an eager copy on every
+active poll, but does not eliminate the copy when a writer overlaps a snapshot.
+The subscription retains its pinned branch between polls, so this is not only a
+cost for writes during a provider await.
 
 ## Validation
 
@@ -65,5 +68,105 @@ immutable/COW overlay snapshot may be preferable for large session overlays.
 - Rust formatting and patch whitespace checks passed.
 - `cargo check -p dialog-repository --lib --target wasm32-unknown-unknown`
   passed, with three warnings in unchanged dialog-storage code.
-- This is query-layer evidence only. No SSE delivery or DOM completion guarantee
-  is implemented or implied, and the app's existing runtime is unchanged.
+- The app's existing runtime is unchanged. Transport validation is recorded below;
+  DOM completion remains outside this candidate's contract.
+
+
+## Opt-in worker / host / display transport
+
+`tonk-query-checkpoint-transport.patch` applies to Tonk commit
+`7ff32b38c32d08c4fc00e4dd0757df4dfd7bee0a`. It requires the dialog-db candidate
+above. It does not change a dependency manifest or include a generated lockfile.
+
+The query route accepts `checkpoints=true`. Opted-in subscribers receive a
+`kind: checkpoint` frame after their snapshot or delta; unchanged results can
+advance their checkpoint without a data frame. Duplicate checkpoints are
+suppressed. Legacy subscribers receive only snapshots and deltas. The reactor
+retains the polling engine until fan-out completes to preserve frame ordering.
+A failed data serialization requires a fresh snapshot before a checkpoint.
+
+The host opts in and dispatches an optional `checkpoint(payload, {tag})`
+consumer method without calling reset/update. Displays record delivered query
+checkpoints per input tag in introspection and clear them when data changes or
+subscriptions are torn down. These are delivery diagnostics, not acknowledgments
+that templates or nested displays have finished mounting. One-shot fallback
+queries and historical frames are not covered. The public inspector must still
+report `renderedRevision: null` and unavailable revision tracking.
+
+In separate clean checkouts, apply each patch against its recorded base. Generate
+local overrides with this helper (Python 3; resolves symlinks to avoid duplicate
+Cargo crate identities):
+
+```sh
+python3 cargo-overrides.py /absolute/path/to/dialog-db > /tmp/tonk-overrides.toml
+```
+
+Use canonical checkout paths and a separate `CARGO_TARGET_DIR` for each
+workspace. Do not share the dialog-db test target directory with the Tonk
+workspace that consumes its path dependencies. In the patched Tonk checkout:
+
+```sh
+cargo --config /tmp/tonk-overrides.toml test -p dialog-reactor --lib
+nix develop --command cargo --config /tmp/tonk-overrides.toml test \
+  -p tonk-host --target wasm32-unknown-unknown \
+  it_routes_checkpoint_without_reset_or_update
+nix develop --command cargo --config /tmp/tonk-overrides.toml test \
+  -p tonk-display --target wasm32-unknown-unknown \
+  it_records_query_delivery_without_claiming_or_changing_render_state
+cargo --config /tmp/tonk-overrides.toml check \
+  -p tonk-worker -p tonk-host -p tonk-display --target wasm32-unknown-unknown
+```
+
+Nix supplies the repository's `wbg-pool` browser runner. Unused local-patch
+warnings are expected for dialog packages outside this dependency graph.
+
+## Snapshot cost measurement
+
+Run in the patched dialog-db checkout:
+
+```sh
+cargo test -p dialog-repository --lib repository::
+cargo test -p dialog-repository --lib measure_read_snapshot_cost -- --ignored --nocapture
+```
+
+The ignored native microbenchmark compares an eager deep copy with a shared
+copy-on-write snapshot of the same state representation. Each case has eight
+paired samples, alternating execution order, with 20 operations per sample.
+It warms the bounded instant log and replaces a single counter value, keeping
+the fact count stable (listed initial facts plus one counter fact). It measures
+capture/read/drop, and capture/write/read/drop while retaining the snapshot.
+`snapshot-cost.csv` contains raw nanoseconds per operation. Timing is diagnostic:
+it includes no browser, query execution, memory profiling or end-to-end latency.
+Concurrent compilation introduced substantial noise; write-case differences
+must not be interpreted as a speedup.
+
+See [snapshot-cost.md](snapshot-cost.md) for both measured runs and caveats;
+`snapshot-cost-isolated.csv` records the final run after other compilation ended.
+The full repository suite passed after COW: 466 passed, one benchmark ignored.
+
+## Transport validation (October 5)
+
+- Full native `dialog-reactor` library suite: 52 passed, including opt-in/legacy
+  delivery, snapshot-before-checkpoint ordering, checkpoint-only advancement and
+  duplicate suppression.
+- Full `tonk-host` Wasm browser suite: 60 passed, including the optional checkpoint
+  callback, unchanged row callbacks and compatibility with consumers without it.
+- Focused display Wasm browser test: one passed, proving that recording delivery
+  neither settles rendering nor changes its generation, and teardown clears it.
+- Final Wasm check of worker, host and display passed. Existing storage and
+  worker unused/dead-code warnings remain.
+- Source formatting and whitespace checks passed in both patched repositories.
+  Patch artifacts preserve standard blank context lines, which ordinary
+  `git diff --check` can flag as whitespace when inspecting a diff of the patch
+  itself; source checks are authoritative. Both patch artifacts passed reverse
+  application checks against their corresponding modified checkouts, and forward
+  application checks against their recorded base trees.
+- A shared-target rebuild failed with duplicate crate identities involving
+  `/tmp` and `/private/tmp`. Canonicalizing paths allowed the clean repository
+  and reactor suites to pass, but a later dialog-db benchmark rebuild reused a
+  `dialog-peer` artifact without test helpers after Tonk built into the same
+  directory. Use a separate target per workspace as well as canonical paths.
+  A fresh dialog-db build in its own directory then passed all 466 repository
+  tests and the benchmark. The redundant failing shared-target build was stopped.
+- No production deployment, dependency-pin update, full SSE-to-nested-render
+  integration test, or generic render-completion receipt has been performed.

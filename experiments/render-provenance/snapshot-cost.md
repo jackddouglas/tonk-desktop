@@ -31,3 +31,18 @@ Reproduce in the patched dialog-db checkout with:
 cargo test -p dialog-repository --lib repository::
 cargo test -p dialog-repository --lib measure_read_snapshot_cost -- --ignored --nocapture
 ```
+
+## Separate-target rerun
+
+After all Tonk compilation finished, the dialog-db workspace rebuilt in its own
+target directory. All 466 repository tests and the benchmark passed. Raw samples
+are in `snapshot-cost-isolated.csv`. The same method produced:
+
+| Operation, 10,000 initial facts | Eager copy median (range), us | COW median (range), us |
+| --- | --- | --- |
+| Capture/read/drop | 2072.395 (1929.937–2341.964) | 0.030 (0.016–0.052) |
+| Capture/write/read/drop, snapshot held | 1806.102 (1761.318–2512.910) | 1855.420 (1787.112–1995.539) |
+
+These are still native microbenchmarks, not end-to-end latency or peak-memory
+measurements. Both runs support avoiding eager read copies; neither establishes a
+write-path speedup. No product performance claim is made.
