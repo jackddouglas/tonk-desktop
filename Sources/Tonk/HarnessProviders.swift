@@ -9,12 +9,19 @@ extension HarnessModel {
   }
   var credentials: ModelCredentials { ModelCredentials(scope: root.lastPathComponent) }
 
-  func configureProvider(_ selected: ModelProvider, connection next: ModelConnection, key: String)
+  func configureProvider(
+    _ selected: ModelProvider, connection next: ModelConnection, key: String,
+    codexExecutable: String? = nil
+  )
     async throws
   {
     guard storageAvailable, !connecting, !busy, !creatingSpace, !loginPending else {
       throw HarnessError.message("Finish the current operation before changing providers.")
     }
+    if selected == .chatGPT, let codexExecutable {
+      _ = try CodexInstallation.validate(codexExecutable)
+    }
+    let executableChanged = selected == .chatGPT && codexExecutable != saved.codexExecutable
     if ![.chatGPT, .disabled].contains(selected) {
       _ = try next.endpoint()
       let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -34,6 +41,7 @@ extension HarnessModel {
       saved.conversation.space = space
     }
     var updated = saved
+    if selected == .chatGPT { updated.codexExecutable = codexExecutable }
     updated.provider = selected
     var connections = saved.connections ?? [:]
     connections[selected.rawValue] = next
@@ -44,7 +52,11 @@ extension HarnessModel {
     updated.checkpointChat()
     try store.save(updated)
     saved = updated
-    if changed || !connected { await connect() } else if selected != .chatGPT { try connectAPI() }
+    if changed || executableChanged || !connected {
+      await connect()
+    } else if selected != .chatGPT {
+      try connectAPI()
+    }
   }
 
   func connectAPI() throws {

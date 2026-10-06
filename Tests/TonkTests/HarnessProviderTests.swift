@@ -6,6 +6,72 @@ import XCTest
 
 final class HarnessProviderTests: XCTestCase {
   @MainActor
+  func testExecutablePickerRequiresDiscoveryFailureRatherThanConnectionFailure() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let model = HarnessModel(directory: directory)
+    defer { model.client.stop() }
+    XCTAssertFalse(model.codexDiscoveryFailed)
+
+    model.saved.codexExecutable = directory.appendingPathComponent("missing-codex").path
+    await model.connect()
+    XCTAssertTrue(model.codexDiscoveryFailed)
+    XCTAssertFalse(model.connected)
+
+    // This executable is found, but exits without completing the app-server handshake.
+    model.saved.codexExecutable = "/usr/bin/false"
+    await model.connect()
+    XCTAssertFalse(model.codexDiscoveryFailed)
+    XCTAssertFalse(model.connected)
+    XCTAssertNotNil(model.error)
+  }
+
+  @MainActor
+  func testCodexSelectionPersistsAndReconnectsWithoutArchivingConversation() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let executable = directory.appendingPathComponent("selected codex")
+    try """
+    #!/usr/bin/python3
+    import json, sys
+    for line in sys.stdin:
+        request = json.loads(line)
+        if 'id' in request:
+            print(json.dumps({'id':request['id'], 'result':{}}), flush=True)
+    """.write(to: executable, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+    let model = HarnessModel(directory: directory)
+    defer { model.client.stop() }
+    model.saved.conversation.messages = [ChatMessage(role: "user", text: "Keep this conversation")]
+    model.saved.conversation.threadID = "existing-thread"
+    // An existing connection must also reconnect when only the executable changes.
+    model.connected = true
+    let conversation = model.saved.conversation
+    try await model.configureProvider(
+      .chatGPT, connection: model.connection, key: "", codexExecutable: executable.path)
+    XCTAssertTrue(model.connected)
+    XCTAssertNil(model.error)
+    XCTAssertFalse(model.codexDiscoveryFailed)
+    _ = try await model.client.request("test/connected-to-selection")
+    XCTAssertEqual(model.saved.conversation, conversation)
+    let reopened = HarnessModel(directory: directory)
+    XCTAssertEqual(reopened.saved.codexExecutable, executable.path)
+
+    do {
+      try await model.configureProvider(
+        .chatGPT, connection: model.connection, key: "", codexExecutable: "/missing-codex")
+      XCTFail("Accepted stale executable")
+    } catch {}
+    XCTAssertEqual(model.saved.codexExecutable, executable.path)
+    XCTAssertTrue(model.connected)
+
+    try await model.configureProvider(
+      .disabled, connection: ModelConnection(provider: .disabled), key: "")
+    XCTAssertEqual(model.saved.codexExecutable, executable.path)
+  }
+
+  @MainActor
   func testDisabledProviderPreventsRequestsAndPreservesConfiguration() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

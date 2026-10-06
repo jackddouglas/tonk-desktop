@@ -11,6 +11,7 @@ final class HarnessModel: ObservableObject {
   @Published var modelCatalogError: String?
   @Published var connected = false
   @Published var connecting = false
+  @Published private(set) var codexDiscoveryFailed = false
   @Published var signedIn = false
   @Published var accountLabel = "Not signed in"
   @Published var busy = false
@@ -88,6 +89,7 @@ final class HarnessModel: ObservableObject {
   func connect() async {
     guard !connecting else { return }
     connecting = true
+    codexDiscoveryFailed = false
     defer { connecting = false }
     if storageAvailable { error = nil }
     client.stop()
@@ -105,26 +107,17 @@ final class HarnessModel: ObservableObject {
       return
     }
     do {
-      let candidates = [
-        ProcessInfo.processInfo.environment["TONK_CODEX"],
-        "/opt/homebrew/bin/codex", "/usr/local/bin/codex",
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-          ".nix-profile/bin/codex"
-        ).path,
-      ]
-      guard
-        let path = candidates.compactMap({ $0 }).first(where: {
-          FileManager.default.isExecutableFile(atPath: $0)
-        })
-      else {
-        throw HarnessError.message(
-          "Codex was not found. Install the Codex CLI, then reconnect. TONK_CODEX can select another executable."
-        )
+      let installation: CodexInstallation
+      do {
+        installation = try await CodexInstallation.discover(selectedPath: saved.codexExecutable)
+      } catch {
+        codexDiscoveryFailed = !(error is CancellationError)
+        throw error
       }
       try await client.start(
-        executable: URL(fileURLWithPath: path),
+        executable: installation.executable,
         home: root.appendingPathComponent("Codex"),
-        workspace: root.appendingPathComponent("Workspace"))
+        workspace: root.appendingPathComponent("Workspace"), searchPath: installation.searchPath)
       connected = true
       try await refreshAccount()
     } catch { self.error = error.localizedDescription }

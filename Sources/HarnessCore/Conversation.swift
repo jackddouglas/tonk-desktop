@@ -74,6 +74,7 @@ public struct AgentProfile: Codable, Equatable, Sendable {
 }
 
 public struct SavedState: Codable, Equatable, Sendable {
+  public var codexExecutable: String?
   public var modelPresets: [ModelConnection]?
   public var sessions: [ChatSession]?
   public var activeSessionID: String?

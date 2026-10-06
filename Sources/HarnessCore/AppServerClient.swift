@@ -17,7 +17,9 @@ public final class AppServerClient {
 
   public init() {}
 
-  public func start(executable: URL, home: URL, workspace: URL) async throws {
+  public func start(executable: URL, home: URL, workspace: URL, searchPath: String? = nil)
+    async throws
+  {
     guard process == nil else { return }
     try FileManager.default.createDirectory(
       at: home, withIntermediateDirectories: true,
@@ -38,7 +40,7 @@ public final class AppServerClient {
     // Finder's PATH is smaller than a login shell's. No shell interpolation.
     environment["PATH"] = [
       executable.deletingLastPathComponent().path,
-      environment["PATH"] ?? "/usr/bin:/bin",
+      searchPath ?? environment["PATH"] ?? "/usr/bin:/bin",
     ].joined(separator: ":")
     environment.removeValue(forKey: "OPENAI_API_KEY")
     environment.removeValue(forKey: "CODEX_API_KEY")

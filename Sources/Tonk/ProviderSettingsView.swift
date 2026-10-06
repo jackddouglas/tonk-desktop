@@ -1,3 +1,4 @@
+import AppKit
 import HarnessCore
 import SwiftUI
 
@@ -6,6 +7,7 @@ struct ProviderSettingsView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var selected: ModelProvider
   @State private var connection: ModelConnection
+  @State private var codexExecutable: String?
   @State private var key = ""
   @State private var saving = false
   @State private var showAdvancedSettings = false
@@ -15,6 +17,7 @@ struct ProviderSettingsView: View {
     self.model = model
     _selected = State(initialValue: model.provider)
     _connection = State(initialValue: model.connection)
+    _codexExecutable = State(initialValue: model.saved.codexExecutable)
   }
 
   var body: some View {
@@ -36,6 +39,23 @@ struct ProviderSettingsView: View {
           }.modifier(SettingsMenuStyle())
         }
         if selected == .chatGPT {
+          if model.codexDiscoveryFailed {
+            VStack(alignment: .leading, spacing: 8) {
+              HStack {
+                Text("Codex CLI")
+                Spacer()
+                if codexExecutable != nil {
+                  Button("Use automatic discovery") { codexExecutable = nil }
+                }
+                Button("Choose executable…") { chooseCodexExecutable() }
+              }
+              Text(
+                codexExecutable ?? "Could not find Codex automatically. Choose your installed CLI."
+              )
+              .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+              .lineLimit(2).truncationMode(.middle)
+            }
+          }
           if !model.subscriptionModels.isEmpty {
             HStack {
               Text("Model")
@@ -118,7 +138,12 @@ struct ProviderSettingsView: View {
           Task {
             defer { saving = false }
             do {
-              try await model.configureProvider(selected, connection: connection, key: key)
+              try await model.configureProvider(
+                selected, connection: connection, key: key, codexExecutable: codexExecutable)
+              if selected == .chatGPT, !model.connected, let connectionError = model.error {
+                error = connectionError
+                return
+              }
               dismiss()
             } catch { self.error = error.localizedDescription }
           }
@@ -136,6 +161,26 @@ struct ProviderSettingsView: View {
       error = nil
     }
     .onChange(of: connection.baseURL) { _, _ in key = "" }
+  }
+
+  private func chooseCodexExecutable() {
+    let panel = NSOpenPanel()
+    panel.title = "Choose Codex CLI"
+    panel.prompt = "Choose"
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = false
+    panel.showsHiddenFiles = true
+    if let codexExecutable {
+      panel.directoryURL = URL(fileURLWithPath: codexExecutable).deletingLastPathComponent()
+    }
+    panel.begin { response in
+      guard response == .OK, let url = panel.url else { return }
+      do {
+        _ = try CodexInstallation.validate(url.path)
+        codexExecutable = url.path
+        error = nil
+      } catch { self.error = error.localizedDescription }
+    }
   }
 }
 
