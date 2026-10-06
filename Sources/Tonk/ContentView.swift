@@ -40,7 +40,7 @@ struct ContentView: View {
       .allowsHitTesting(model.openedSpace != nil)
       .accessibilityHidden(model.openedSpace == nil)
       if model.openedSpace == nil {
-        if !runtime.accountConnected && RuntimeLocation.deployment != .local {
+        if !runtime.showsSpacePicker {
           if runtime.accountStatusKnown {
             TonkWelcomeView(runtime: runtime)
           } else {
@@ -59,13 +59,14 @@ struct ContentView: View {
         } else {
           SpacePickerView(runtime: runtime, search: $spaceSearch) { space in
             Task {
+              guard let space = await runtime.spaceForOpening(space) else { return }
               if await model.enterSpace(space) {
                 runtime.openSpace(space)
                 model.openedSpace = space
                 showingChat = false
               }
             }
-          }.disabled(model.busy || model.connecting || model.creatingSpace)
+          }.disabled(model.busy || model.connecting || model.creatingSpace || runtime.pendingSpace != nil)
         }
       }
     }
@@ -80,7 +81,7 @@ struct ContentView: View {
     )
     .focusedSceneValue(
       \.focusSearch,
-      model.openedSpace == nil && (runtime.accountConnected || RuntimeLocation.deployment == .local)
+      model.openedSpace == nil && runtime.showsSpacePicker
         ? { searchFocusRequest += 1 } : nil
     )
     .focusedSceneValue(\.refreshContent, refreshDisabled ? nil : refreshContent)
@@ -93,7 +94,7 @@ struct ContentView: View {
     )
     .navigationTitle(
       model.openedSpace?.title
-        ?? (runtime.accountConnected || RuntimeLocation.deployment == .local
+        ?? (runtime.showsSpacePicker
           ? "Spaces" : (RuntimeLocation.deployment == .production ? "" : "Tonk"))
     )
     .navigationSubtitle(
@@ -213,7 +214,7 @@ struct ContentView: View {
       }.customGlassToolbarItem()
     }
     if model.openedSpace == nil
-      && (runtime.accountConnected || RuntimeLocation.deployment == .local)
+      && runtime.showsSpacePicker
     {
       ToolbarItem(id: "glass-space-search", placement: .primaryAction) {
         GlassToolbarSearch(text: $spaceSearch, focusRequest: searchFocusRequest)
@@ -354,7 +355,14 @@ struct ContentView: View {
           }.frame(maxWidth: 680).padding(24).frame(maxWidth: .infinity)
         }
         .overlay {
-          if model.saved.conversation.messages.isEmpty && !model.busy {
+          if model.connecting {
+            VStack(spacing: 12) {
+              ProgressView().controlSize(.large)
+              Text("Starting your agent…").font(.headline)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .textBackgroundColor))
+          } else if model.saved.conversation.messages.isEmpty && !model.busy {
             Text("Send a message to start")
               .foregroundStyle(.secondary)
               .multilineTextAlignment(.center)

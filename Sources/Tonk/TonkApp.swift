@@ -14,13 +14,14 @@ struct TonkApp: App {
         .frame(minWidth: 850, minHeight: 580)
         .background(WindowAppearance())
         .task {
+          runtime.prepareCatalogCache(directory: model.root)
           delegate.model = model
           delegate.runtime = runtime
           model.runtime = runtime
           await runtime.startMCPBridge(root: model.root)
           runtime.load()
-          await model.connect()
           if ProcessInfo.processInfo.arguments.contains("--smoke-test") {
+            await model.connect()
             await SmokeTest.run(model: model, runtime: runtime)
           }
         }

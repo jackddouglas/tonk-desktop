@@ -20,6 +20,8 @@ extension RuntimeModel {
     do {
       let result = try await accountScript(
         """
+        const account = await api('/api/account');
+        const identity = await api('/api/identity/root');
         const variable = name => ({'?': {name}});
         const field = (the, as) => ({the, as, cardinality: 'one'});
         const meta = '/api/profile/branch/meta/query';
@@ -47,13 +49,17 @@ extension RuntimeModel {
         const rows = await api(path, query);
         \(RuntimeCatalogObservation.script)
         if (!Array.isArray(rows)) throw new Error('Invalid space catalog response.');
-        return {branch, spaces: rows.map(row => ({subject: row.fields.subject, name: row.fields.name || null}))};
+        return {branch, root: identity.rootDid || '', status: account.status, spaces: rows.map(row => ({subject: row.fields.subject, name: row.fields.name || null}))};
         """, arguments: ["catalogGeneration": catalogObservation.generation])
       try Task.checkCancellation()
       guard let rows = result["spaces"] else {
         throw CallbackError("The runtime returned no space catalog.")
       }
-      spaces = try TonkSpace.decodeCatalog(JSONSerialization.data(withJSONObject: rows))
+      let decoded = try TonkSpace.decodeCatalog(JSONSerialization.data(withJSONObject: rows))
+      guard let branch = result["branch"] as? String, let root = result["root"] as? String,
+        let status = result["status"] as? String
+      else { throw CallbackError("Invalid catalog account context.") }
+      try acceptCatalog(decoded, branch: branch, root: root, status: status)
       if !spaces.isEmpty { catalogRecoveryStarted = nil }
       if let selectedSpace {
         self.selectedSpace = spaces.first(where: { $0.id == selectedSpace.id })

@@ -225,6 +225,7 @@ struct ProviderSettingsView: View {
       }.controlSize(.regular)
     }
     .padding(24).frame(width: 540).nativeControl().disabled(saving)
+    .task { if !model.connected { await model.connect() } }
     .interactiveDismissDisabled(saving)
     .sheet(isPresented: $showAdvancedSettings) { AdvancedSettingsView() }
     .onChange(of: selected) { _, value in

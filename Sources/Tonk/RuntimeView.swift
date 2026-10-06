@@ -15,6 +15,11 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   @Published var accountConnected = false
   @Published var accountStatusKnown = false
   @Published var spaces: [TonkSpace] = []
+  @Published var showingCachedCatalog = false
+  @Published var pendingSpace: TonkSpace?
+  var catalogCache: SpaceCatalogCache?
+  var cachedAccountRoot: String?
+  var liveAccountRoot: String?
   @Published var selectedSpace: TonkSpace?
   @Published var catalogRecoveryStarted: Date?
   @Published var catalogLoading = false
@@ -86,14 +91,6 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
         if let status = try? await probe(), status["health"] as? Bool == true {
           await prepareLocalFixtureIfRequested()
           await refreshSpaces()
-          do {
-            let account = try await accountScript("return await api('/api/account');")
-            try applyAccountStatus(account)
-          } catch {
-            if !Task.isCancelled {
-              accountMessage = "Couldn’t check your saved session. Try again."
-            }
-          }
           return
         }
         try? await Task.sleep(for: .seconds(1))

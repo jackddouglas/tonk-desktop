@@ -7,10 +7,16 @@ struct SpacePickerView: View {
   var onOpen: (TonkSpace) -> Void
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      if let error = runtime.catalogError {
+      if let pending = runtime.pendingSpace {
+        ProgressView("Opening \(pending.title)…").padding(.horizontal, 24)
+      }
+      if let error = runtime.catalogError ?? runtime.error {
         VStack(alignment: .leading, spacing: 8) {
           Text("Couldn’t load spaces: \(error)").font(.callout).textSelection(.enabled)
-          Button("Try again") { Task { await runtime.refreshSpaces() } }
+          Button("Try again") {
+            if runtime.showingCachedCatalog { runtime.load() }
+            else { Task { await runtime.refreshSpaces() } }
+          }
         }.padding(.horizontal, 20)
       }
       if runtime.spaces.isEmpty, runtime.catalogError == nil,

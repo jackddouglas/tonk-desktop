@@ -29,7 +29,7 @@ extension HarnessModel {
     saved = next
   }
 
-  func openChat(_ id: String) async -> Bool {
+  func openChat(_ id: String, connectInBackground: Bool = false) async -> Bool {
     guard storageAvailable, !busy, !creatingSpace, !connecting, !loginPending else { return false }
     do {
       var next = saved
@@ -38,7 +38,7 @@ extension HarnessModel {
       saved = next
       toolActivity = []
       spaceCreationError = nil
-      await connect()
+      if connectInBackground { self.connectInBackground() } else { await connect() }
       return true
     } catch {
       self.error = error.localizedDescription
@@ -47,9 +47,10 @@ extension HarnessModel {
   }
 
   func enterSpace(_ space: TonkSpace) async -> Bool {
-    guard await openSpaceChat(space) else { return false }
+    guard await openSpaceChat(space, connectInBackground: true) else { return false }
     openedSpace = space
     showingChat = false
+    if !connected { connectInBackground() }
     return true
   }
 
@@ -62,10 +63,12 @@ extension HarnessModel {
     if saved.activeSessionID != previous { showingChat = true }
   }
 
-  func openSpaceChat(_ space: TonkSpace) async -> Bool {
+  func openSpaceChat(_ space: TonkSpace, connectInBackground: Bool = false) async -> Bool {
     guard storageAvailable, !busy, !creatingSpace, !connecting, !loginPending else { return false }
     if saved.conversation.space?.id == space.id { return true }
-    if let existing = saved.chats(in: space.id).first { return await openChat(existing.id) }
+    if let existing = saved.chats(in: space.id).first {
+      return await openChat(existing.id, connectInBackground: connectInBackground)
+    }
     attachSpace(space)
     return saved.conversation.space?.id == space.id
   }

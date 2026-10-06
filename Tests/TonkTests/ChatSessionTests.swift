@@ -111,4 +111,60 @@ final class ChatSessionTests: XCTestCase {
     XCTAssertFalse(opened)
     XCTAssertEqual(model.saved.conversation.space, first)
   }
+  @MainActor
+  func testSpaceOpensBeforeProviderHandshakeForNewAndRestoredChats() async throws {
+    for restoreChat in [false, true] {
+      let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+      let release = root.appendingPathComponent("release")
+      let executable = root.appendingPathComponent("codex-fixture")
+      try """
+      #!/usr/bin/python3
+      import json, pathlib, sys, time
+      release = pathlib.Path(__file__).parent / 'release'
+      for line in sys.stdin:
+          request = json.loads(line)
+          if 'id' in request:
+              while not release.exists(): time.sleep(0.01)
+              print(json.dumps({'id': request['id'], 'result': {}}), flush=True)
+      """.write(to: executable, atomically: true, encoding: .utf8)
+      try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+      let model = HarnessModel(directory: root)
+      defer {
+        model.client.stop()
+        try? FileManager.default.removeItem(at: root)
+      }
+      model.saved.codexExecutable = executable.path
+      let target = try space("ABC")
+      if restoreChat {
+        model.attachSpace(target)
+        model.saved.conversation.messages = [ChatMessage(role: "user", text: "Saved conversation")]
+        model.attachSpace(try space("DEF"))
+      }
+      XCTAssertFalse(model.connecting)
+      XCTAssertFalse(model.connected)
+      let opened = expectation(description: "Space opens while provider is held unready")
+      Task {
+        let success = await model.enterSpace(target)
+        XCTAssertTrue(success)
+        opened.fulfill()
+      }
+      await fulfillment(of: [opened], timeout: 1)
+      XCTAssertEqual(model.openedSpace, target)
+      XCTAssertTrue(model.connecting)
+      XCTAssertFalse(model.canSend)
+      if restoreChat {
+        XCTAssertEqual(model.saved.conversation.messages.first?.text, "Saved conversation")
+      }
+      // Release the handshake only after proving entry did not await it.
+      try Data().write(to: release)
+      for _ in 0..<600 {
+        if !model.connecting { break }
+        try await Task.sleep(for: .milliseconds(20))
+      }
+      XCTAssertFalse(model.connecting)
+      XCTAssertTrue(model.connected, model.error ?? "Provider did not connect")
+    }
+  }
+
 }

@@ -91,12 +91,22 @@ final class HarnessModel: ObservableObject {
   }
 
   var canSend: Bool {
-    connected && signedIn && !busy && !creatingSpace && !loginPending && storageAvailable
+    connected && signedIn && !connecting && !busy && !creatingSpace && !loginPending && storageAvailable
   }
 
   func connect() async {
     guard !connecting else { return }
     connecting = true
+    await establishProviderConnection()
+  }
+
+  func connectInBackground() {
+    guard !connecting else { return }
+    connecting = true
+    Task { await establishProviderConnection() }
+  }
+
+  private func establishProviderConnection() async {
     codexDiscoveryFailed = false
     defer { connecting = false }
     if storageAvailable { error = nil }

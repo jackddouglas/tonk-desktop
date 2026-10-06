@@ -18,6 +18,10 @@ extension RuntimeModel {
         ?? error.localizedDescription
       throw CallbackError(message)
     }
+    catalogCache?.clear()
+    showingCachedCatalog = false
+    cachedAccountRoot = nil
+    liveAccountRoot = nil
     accountConnected = false
     accountStatusKnown = true
     accountMessage = nil
