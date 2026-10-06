@@ -22,7 +22,7 @@ struct ProviderSettingsView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      Text("Model provider").font(.title2.weight(.semibold))
+      Text("Settings").font(.title2.weight(.semibold))
       VStack(alignment: .leading, spacing: 12) {
         HStack {
           Text("Provider")

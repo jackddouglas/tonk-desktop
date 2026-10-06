@@ -21,7 +21,6 @@ struct ContentView: View {
   @State private var searchFocusRequest = 0
   @State private var showHistory = false
   @State private var showProviderSettings = false
-  @State private var showAdvancedSettings = false
   @State private var accountError: String?
   @State private var signingOut = false
   @State private var sharingSpace: TonkSpace?
@@ -73,10 +72,11 @@ struct ContentView: View {
     .focusedSceneValue(\.refreshContent, refreshDisabled ? nil : refreshContent)
     .navigationTitle(
       model.openedSpace?.title
-        ?? (runtime.accountConnected || RuntimeLocation.deployment == .local ? "Spaces" : "")
+        ?? (runtime.accountConnected || RuntimeLocation.deployment == .local
+          ? "Spaces" : (RuntimeLocation.deployment == .production ? "" : "Tonk"))
     )
     .navigationSubtitle(
-      RuntimeLocation.deployment == .production ? "" : RuntimeLocation.deployment.title
+      RuntimeLocation.deployment == .production ? "" : RuntimeLocation.home.absoluteString
     )
     .toolbar { windowToolbar }
     .toolbarBackground(Color(nsColor: .textBackgroundColor), for: .windowToolbar)
@@ -95,7 +95,6 @@ struct ContentView: View {
     .sheet(isPresented: $showProviderSettings) {
       ProviderSettingsView(model: model)
     }
-    .sheet(isPresented: $showAdvancedSettings) { AdvancedSettingsView() }
     .sheet(item: $sharingSpace) { space in
       ShareSpaceView(runtime: runtime, space: space)
     }
@@ -220,10 +219,9 @@ struct ContentView: View {
       }
       menu.addItem(.separator())
       menu.addAction(
-        "Model settings…", symbol: "slider.horizontal.3",
+        "Settings…", symbol: "gearshape",
         enabled: !accountActionsDisabled
       ) { showProviderSettings = true }
-      menu.addAction("Advanced settings…", symbol: "gearshape") { showAdvancedSettings = true }
       if model.provider == .chatGPT && model.signedIn {
         menu.addAction("Sign out of ChatGPT", enabled: !accountActionsDisabled) {
           Task { await model.signOut() }
