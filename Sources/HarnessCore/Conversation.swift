@@ -12,6 +12,7 @@ public struct ChatMessage: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct Conversation: Codable, Equatable, Sendable {
+  public var resolvedModel: String?
   public var draft: String?
   public var apiHistory: [APIMessage]?
   public var spaceProposal: SpaceProposal?
@@ -73,6 +74,7 @@ public struct AgentProfile: Codable, Equatable, Sendable {
 }
 
 public struct SavedState: Codable, Equatable, Sendable {
+  public var modelPresets: [ModelConnection]?
   public var sessions: [ChatSession]?
   public var activeSessionID: String?
   public var importedLegacyChats: Bool?

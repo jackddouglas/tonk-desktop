@@ -20,12 +20,37 @@ struct ProviderSettingsView: View {
     VStack(alignment: .leading, spacing: 20) {
       Text("Model provider").font(.title2.weight(.semibold))
       Form {
+        if !model.configuredModels.isEmpty {
+          Menu("Saved models") {
+            ForEach(Array(model.configuredModels.enumerated()), id: \.offset) { _, configuration in
+              Button("\(configuration.model) · \(configuration.provider.title)") {
+                selected = configuration.provider
+                connection = configuration
+                key = ""
+              }
+            }
+          }
+        }
         Picker("Provider", selection: $selected) {
           ForEach(ModelProvider.allCases) { provider in Text(provider.title).tag(provider) }
         }
         if selected == .chatGPT {
-          Text("Use your ChatGPT subscription with the existing browser sign-in.")
-            .foregroundStyle(.secondary)
+          if !model.subscriptionModels.isEmpty {
+            Picker("Model", selection: $connection.model) {
+              if !model.subscriptionModels.contains(where: { $0.id == connection.model }) {
+                Text(connection.model.isEmpty ? "Choose a model" : connection.model).tag(
+                  connection.model)
+              }
+              ForEach(model.subscriptionModels) { item in Text(item.name).tag(item.id) }
+            }
+          } else {
+            TextField("Model ID", text: $connection.model, prompt: Text("Default from ChatGPT"))
+          }
+          if let error = model.modelCatalogError {
+            Text(error).font(.caption).foregroundStyle(.secondary)
+          }
+          Text("Uses your ChatGPT subscription. Model changes start a new chat.")
+            .font(.caption).foregroundStyle(.secondary)
         } else {
           TextField(
             "Model ID", text: $connection.model, prompt: Text("Enter the provider’s model ID")
@@ -92,7 +117,9 @@ struct ProviderSettingsView: View {
     }
     .padding(24).frame(width: 540).nativeControl().disabled(saving)
     .onChange(of: selected) { _, value in
-      connection = model.saved.connections?[value.rawValue] ?? ModelConnection(provider: value)
+      if connection.provider != value {
+        connection = model.saved.connections?[value.rawValue] ?? ModelConnection(provider: value)
+      }
       key = ""
       error = nil
     }

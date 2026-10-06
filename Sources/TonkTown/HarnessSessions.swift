@@ -46,6 +46,22 @@ extension HarnessModel {
     }
   }
 
+  func enterSpace(_ space: TonkSpace) async -> Bool {
+    guard await openSpaceChat(space) else { return false }
+    openedSpace = space
+    showingChat = false
+    return true
+  }
+
+  func startSpaceChat() {
+    guard let openedSpace, saved.conversation.space?.id == openedSpace.id,
+      !busy, !creatingSpace, !connecting, !loginPending, storageAvailable
+    else { return }
+    let previous = saved.activeSessionID
+    newConversation()
+    if saved.activeSessionID != previous { showingChat = true }
+  }
+
   func openSpaceChat(_ space: TonkSpace) async -> Bool {
     guard storageAvailable, !busy, !creatingSpace, !connecting, !loginPending else { return false }
     if saved.conversation.space?.id == space.id { return true }

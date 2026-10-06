@@ -18,19 +18,18 @@ struct ContentView: View {
   @State private var showHistory = false
   @State private var showProviderSettings = false
   @State private var sharingSpace: TonkSpace?
-  @State private var showRuntime = true
   @FocusState private var composing: Bool
 
   var body: some View {
     ZStack {
       HSplitView {
-        chat.frame(minWidth: 340, idealWidth: 440)
-        if showRuntime { workspace.frame(minWidth: 380, maxWidth: .infinity) }
+        if showingChat { chat.frame(minWidth: 340, idealWidth: 440) }
+        workspace.frame(minWidth: 380, maxWidth: .infinity)
       }
-      .opacity(showingChat ? 1 : 0)
-      .allowsHitTesting(showingChat)
-      .accessibilityHidden(!showingChat)
-      if !showingChat {
+      .opacity(model.openedSpace != nil ? 1 : 0)
+      .allowsHitTesting(model.openedSpace != nil)
+      .accessibilityHidden(model.openedSpace == nil)
+      if model.openedSpace == nil {
         if !runtime.accountConnected && RuntimeLocation.deployment != .local {
           TonkWelcomeView(runtime: runtime)
         } else {
@@ -38,7 +37,6 @@ struct ContentView: View {
             HStack {
               Text("Your spaces").font(.largeTitle.weight(.semibold))
               Spacer()
-              Button("Earlier chats") { showHistory = true }
               Button("Refresh", systemImage: "arrow.clockwise") {
                 Task { await runtime.refreshSpaces() }
               }
@@ -46,9 +44,10 @@ struct ContentView: View {
             }.padding(.horizontal, 28).padding(.top, 28)
             SpacePickerView(runtime: runtime) { space in
               Task {
-                if await model.openSpaceChat(space) {
+                if await model.enterSpace(space) {
                   runtime.openSpace(space)
-                  showingChat = true
+                  model.openedSpace = space
+                  showingChat = false
                 }
               }
             }.disabled(model.busy || model.connecting || model.creatingSpace)
@@ -59,18 +58,21 @@ struct ContentView: View {
     .nativeControl()
     .toolbar {
       ToolbarItem(placement: .navigation) {
-        if showingChat {
-          Button("All spaces", systemImage: "square.grid.2x2") { showingChat = false }
-            .disabled(model.busy || model.creatingSpace)
+        if model.openedSpace != nil {
+          Button("All spaces", systemImage: "square.grid.2x2") {
+            model.openedSpace = nil
+            showingChat = false
+          }
+          .disabled(model.busy || model.creatingSpace)
         }
       }
       ToolbarItem(placement: .navigation) {
         Button {
-          model.newConversation()
+          model.startSpaceChat()
         } label: {
           Label("New chat", systemImage: "square.and.pencil")
         }
-        .disabled(!showingChat || model.busy || model.creatingSpace).help("New chat")
+        .disabled(model.openedSpace == nil || model.busy || model.creatingSpace).help("New chat")
       }
       ToolbarItem {
         Button {
@@ -79,8 +81,7 @@ struct ContentView: View {
           Label("Chat history", systemImage: "clock")
         }
         .disabled(
-          model.busy || model.creatingSpace
-            || (!runtime.accountConnected && RuntimeLocation.deployment != .local)
+          model.openedSpace == nil || model.busy || model.creatingSpace
         ).help("Chat history")
       }
       ToolbarItem {
@@ -90,11 +91,11 @@ struct ContentView: View {
       }
       ToolbarItem {
         Button {
-          showRuntime.toggle()
+          showingChat.toggle()
         } label: {
-          Label("Show Tonk", systemImage: "sidebar.right")
+          Label("Show chat", systemImage: "sidebar.left")
         }
-        .disabled(!showingChat).help("Show or hide Tonk").keyboardShortcut(
+        .disabled(model.openedSpace == nil).help("Show or hide chat").keyboardShortcut(
           "0", modifiers: [.command, .option])
       }
     }
@@ -106,13 +107,13 @@ struct ContentView: View {
     }
     .sheet(isPresented: $showHistory) {
       ChatHistoryView(
-        model: model, space: showingChat ? model.saved.conversation.space : nil,
-        allSpaces: !showingChat
+        model: model, space: model.openedSpace
       ) { session in
         Task {
           if await model.openChat(session.id) {
             if let space = model.saved.conversation.space {
               runtime.openSpace(space)
+              model.openedSpace = space
             } else {
               runtime.showSpaces()
             }
@@ -174,7 +175,7 @@ struct ContentView: View {
                 } else {
                   HStack {
                     Button(proposal.submitted ? "Check status" : "Create space") {
-                      showRuntime = true
+                      showingChat = true
                       Task { await model.acceptSpaceProposal() }
                     }.disabled(!model.canSend)
                     Button(proposal.submitted ? "Dismiss" : "Not now") {
@@ -226,7 +227,7 @@ struct ContentView: View {
           .secondary)
         VStack(alignment: .leading, spacing: 3) {
           Text("Chat").font(.headline)
-          Text(model.connecting ? "Connecting…" : model.accountLabel)
+          Text(model.connecting ? "Connecting…" : model.modelLabel)
             .font(.caption).foregroundStyle(.secondary)
         }
         Spacer()
@@ -246,14 +247,6 @@ struct ContentView: View {
           .frame(width: 32, height: 32).controlSurface(radius: 16)
           .fixedSize().accessibilityLabel("Account options")
       }.padding(.horizontal, 16).padding(.vertical, 12)
-      if let space = model.saved.conversation.space {
-        HStack {
-          Image(systemName: "link")
-          Text(
-            "\(runtime.spaces.first(where: { $0.id == space.id })?.title ?? space.title)")
-          Spacer()
-        }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.bottom, 12)
-      }
 
     }
   }
@@ -322,7 +315,7 @@ struct ContentView: View {
         .accessibilityHidden(runtime.selectedSpace == nil)
       if runtime.selectedSpace == nil {
         SpacePickerView(runtime: runtime) { space in
-          Task { if await model.openSpaceChat(space) { runtime.openSpace(space) } }
+          Task { if await model.enterSpace(space) { runtime.openSpace(space) } }
         }
       }
       if let error = runtime.error {
@@ -341,6 +334,7 @@ struct ContentView: View {
         HStack(spacing: 12) {
           if runtime.selectedSpace != nil {
             Button {
+              model.openedSpace = nil
               showingChat = false
             } label: {
               Image(systemName: "chevron.left").frame(width: 20, height: 20)

@@ -31,12 +31,14 @@ that enables Tonk's service-worker domain in the embedded web view.
 1. On first launch, **Sign in to Tonk** opens your browser to use your existing
    Tonk passkey. The app accepts the device grant and opens your space grid.
    If already signed in, the app opens directly to the grid.
-2. Open a space to resume its latest chat alongside the live runtime.
+2. Open a space to see its content filling the window. **New chat** opens a fresh
+   chat alongside it; **Show chat** reveals the most recent conversation.
 3. Use **Model provider** in the toolbar to choose ChatGPT subscription sign-in,
    an API-key provider, or a local model. ChatGPT sign-in remains a separate step.
 4. **New chat** starts a separate conversation in the current space. **Chat history**
-   reopens that space's conversations; **Earlier chats** on the grid lists all saved
-   conversations, including older unassigned chats.
+   lists only that space's conversations and offers **New chat**. Chat history is
+   available inside a space, with no global history screen. Older unassigned chats
+   remain preserved in local storage.
 5. Chats remember their model configuration, tool history, and unsent draft.
    They are stored locally on this Mac; they are not shared space records or synced chats.
 6. **All spaces** returns to the grid. Opening a different space changes to that
@@ -69,7 +71,10 @@ provider and base URL. Leave the key blank to retain it; **Remove saved key** de
 it. Changing endpoint clears an unsaved key entry. Remote endpoints require HTTPS;
 HTTP is allowed only on loopback. Redirects are rejected rather than forwarding keys.
 
-API models stream Markdown replies and use the same pinned Tonk tools as ChatGPT.
+The chat header shows the active model ID for both ChatGPT and API providers.
+ChatGPT settings list models from the live app-server catalog; **Saved models**
+lets you switch among remembered provider/model configurations without re-entering
+keys. API models stream Markdown replies and use the same pinned Tonk tools as ChatGPT.
 Disable **Enable Tonk tools** for a model that only supports text. Model IDs are
 entered explicitly, since availability depends on the provider and account.
 This first adapter supports text and function calling, not vision, provider-specific

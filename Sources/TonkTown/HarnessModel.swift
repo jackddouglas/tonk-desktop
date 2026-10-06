@@ -6,6 +6,9 @@ import SwiftUI
 final class HarnessModel: ObservableObject {
   @Published var saved = SavedState()
   @Published var showingChat = false
+  @Published var openedSpace: TonkSpace?
+  @Published var subscriptionModels: [SubscriptionModel] = []
+  @Published var modelCatalogError: String?
   @Published var connected = false
   @Published var connecting = false
   @Published var signedIn = false
@@ -133,6 +136,7 @@ final class HarnessModel: ObservableObject {
       "account/read", params: .object(["refreshToken": .bool(false)]))
     signedIn = result["account"]["type"].string == "chatgpt"
     accountLabel = signedIn ? "ChatGPT connected" : "Not signed in"
+    if signedIn { await refreshSubscriptionModels() }
   }
 
   func signIn() async {
@@ -199,16 +203,19 @@ final class HarnessModel: ObservableObject {
         "developerInstructions": .string(saved.profile.instructions + spaceInstructions),
         "sandbox": .string("read-only"), "approvalPolicy": .string("never"),
       ]
+      if !connection.model.isEmpty { parameters["model"] = .string(connection.model) }
       if let threadID = saved.conversation.threadID {
         if !resumed {
           parameters["threadId"] = .string(threadID)
-          _ = try await client.request("thread/resume", params: .object(parameters))
+          let response = try await client.request("thread/resume", params: .object(parameters))
+          saved.conversation.resolvedModel = response["model"].string
           resumed = true
         }
       } else {
         parameters["dynamicTools"] = .array(
           SpaceTools.agentDefinitions(includeCLI: RuntimeLocation.deployment != .local))
         let result = try await client.request("thread/start", params: .object(parameters))
+        saved.conversation.resolvedModel = result["model"].string
         guard let threadID = result["thread"]["id"].string else {
           throw HarnessError.message("The agent did not create a conversation.")
         }

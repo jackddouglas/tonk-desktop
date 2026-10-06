@@ -23,7 +23,7 @@ extension HarnessModel {
         throw HarnessError.message("Enter an API key for \(selected.title).")
       }
     }
-    let changed = selected != provider || (selected != .chatGPT && next != connection)
+    let changed = selected != provider || next != connection
     if changed {
       let space = saved.conversation.space
       newConversation()
@@ -36,7 +36,10 @@ extension HarnessModel {
     var updated = saved
     updated.provider = selected
     var connections = saved.connections ?? [:]
-    if selected != .chatGPT { connections[selected.rawValue] = next }
+    connections[selected.rawValue] = next
+    var presets = updated.modelPresets ?? []
+    if !next.model.isEmpty && !presets.contains(next) { presets.append(next) }
+    updated.modelPresets = presets
     updated.connections = connections
     updated.checkpointChat()
     try store.save(updated)
