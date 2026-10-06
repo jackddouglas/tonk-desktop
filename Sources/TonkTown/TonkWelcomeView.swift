@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct TonkWelcomeView: View {
@@ -5,11 +6,14 @@ struct TonkWelcomeView: View {
   var body: some View {
     VStack(spacing: 24) {
       Spacer()
-      Image(systemName: "square.grid.2x2").font(.system(size: 48, weight: .light))
-        .foregroundStyle(.secondary)
+      Image(nsImage: NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
+        .resizable()
+        .scaledToFit()
+        .frame(width: 80, height: 80)
+        .accessibilityHidden(true)
       VStack(spacing: 12) {
         Text("Welcome to Tonk").font(.largeTitle.weight(.semibold))
-        Text("Your spaces, with a chat to help you build.")
+        Text("Your spaces, with an agent to help you build.")
           .font(.title3).foregroundStyle(.secondary)
       }
       VStack(spacing: 14) {
@@ -38,8 +42,6 @@ struct TonkWelcomeView: View {
         }
       }.frame(maxWidth: 430)
       Spacer()
-      Text("Choose ChatGPT, an API provider, or a local model when you start chatting.")
-        .font(.caption).foregroundStyle(.secondary).padding(.bottom, 28)
     }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity).background(.background)
   }
 }

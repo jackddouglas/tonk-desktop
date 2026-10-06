@@ -15,9 +15,14 @@ struct AdvancedSettingsView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
       Text("Advanced settings").font(.title2.weight(.semibold))
-      TextField("Remote URL", text: $custom, prompt: Text("https://tonk.network"))
-        .textFieldStyle(.roundedBorder).autocorrectionDisabled()
-      Text("Default: tonk.network").font(.caption).foregroundStyle(.secondary)
+      HStack(spacing: 12) {
+        TextField("Remote URL", text: $custom, prompt: Text("https://tonk.network"))
+          .textFieldStyle(.roundedBorder).autocorrectionDisabled()
+        Button("Reset") {
+          custom = RuntimeLocation.Deployment.production.home.absoluteString
+        }
+        .help("Reset to tonk.network")
+      }
       Text(
         "Each remote has its own account, spaces, and chats on this Mac. Quit and reopen Tonk to use the selected remote."
       )

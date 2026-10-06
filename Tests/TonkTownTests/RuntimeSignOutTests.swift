@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class RuntimeSignOutTests: XCTestCase {
-  func testDeviceSignOutChecksStatusAndDoesNotDeleteStorage() async throws {
+  func testDeviceSignOutUsesUnlinkStatusWithoutRequestingFromRetiredPage() async throws {
     let webView = WKWebView()
     webView.loadHTMLString("<p>Account fixture</p>", baseURL: nil)
     for _ in 0..<100 {
@@ -16,11 +16,11 @@ final class RuntimeSignOutTests: XCTestCase {
       const requests = [];
       const fetch = async (path, options) => {
         requests.push({path, method: options.method});
-        return {ok: succeeds, status: succeeds ? 200 : 503};
+        return {ok: succeeds, status: succeeds ? 200 : 503, json: async () => ({status})};
       };
       const api = async path => {
         requests.push({path, method: 'GET'});
-        return {status};
+        throw new Error(path + ' failed (HTTP 409): profile changed; reload required');
       };
       let signedOut = false;
       let rejected = false;
@@ -41,8 +41,7 @@ final class RuntimeSignOutTests: XCTestCase {
       XCTAssertEqual(result["rejected"] as? Bool, !expected)
       let requests = result["requests"] as! [[String: String]]
       XCTAssertEqual(requests.first, ["path": "/api/account", "method": "DELETE"])
-      XCTAssertEqual(requests.count, succeeds ? 2 : 1)
-      if succeeds { XCTAssertEqual(requests.last, ["path": "/api/account", "method": "GET"]) }
+      XCTAssertEqual(requests.count, 1)
     }
   }
 }

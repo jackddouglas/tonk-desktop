@@ -71,7 +71,10 @@ struct ContentView: View {
         ? { searchFocusRequest += 1 } : nil
     )
     .focusedSceneValue(\.refreshContent, refreshDisabled ? nil : refreshContent)
-    .navigationTitle(model.openedSpace?.title ?? "Spaces")
+    .navigationTitle(
+      model.openedSpace?.title
+        ?? (runtime.accountConnected || RuntimeLocation.deployment == .local ? "Spaces" : "")
+    )
     .navigationSubtitle(
       RuntimeLocation.deployment == .production ? "" : RuntimeLocation.deployment.title
     )

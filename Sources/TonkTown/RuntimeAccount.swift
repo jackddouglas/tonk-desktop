@@ -10,7 +10,14 @@ extension RuntimeModel {
     }
     catalogTask?.cancel()
     stopMCPBridge()
-    _ = try await accountScript(Self.signOutScript)
+    do {
+      _ = try await accountScript(Self.signOutScript)
+    } catch {
+      let message =
+        (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String
+        ?? error.localizedDescription
+      throw CallbackError(message)
+    }
     accountConnected = false
     accountMessage = nil
     selectedSpace = nil
@@ -28,7 +35,9 @@ extension RuntimeModel {
       method: 'DELETE', signal: AbortSignal.timeout(60000)
     });
     if (!response.ok) throw new Error('Tonk sign-out failed (HTTP ' + response.status + ').');
-    const account = await api('/api/account');
+    // Signing out retires this page's profile context. A follow-up GET would be
+    // rejected with HTTP 409; the DELETE response already contains the status.
+    const account = await response.json();
     if (!['rootMissing', 'unregistered'].includes(account.status))
       throw new Error('A Tonk account is still active. Refresh before trying again.');
     return {signedOut: true};
