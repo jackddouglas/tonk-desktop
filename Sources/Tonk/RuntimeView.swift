@@ -41,6 +41,11 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     }
     // The native picker can cover/detach this view while still querying its worker.
     configuration.preferences.inactiveSchedulingPolicy = .none
+    // Tonk carries this presentation flag into its sealed guest iframes.
+    configuration.userContentController.addUserScript(
+      WKUserScript(
+        source: "window.__tonkHideFab = true;",
+        injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
     // User-selected remotes are restricted by the navigation delegate, not a static bundle list.
     inspection.install(on: configuration.userContentController)
     webView = WKWebView(frame: .zero, configuration: configuration)

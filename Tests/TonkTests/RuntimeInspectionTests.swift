@@ -6,6 +6,23 @@ import XCTest
 
 @MainActor
 final class RuntimeInspectionTests: XCTestCase {
+  func testNativeFabFlagIsAvailableBeforePageScriptsOnEveryLoad() async throws {
+    let runtime = RuntimeModel()
+    let webView = runtime.webView
+    webView.navigationDelegate = nil
+    for _ in 0..<2 {
+      webView.loadHTMLString(
+        "<script>window.flagAtBoot = window.__tonkHideFab === true;</script>", baseURL: nil)
+      for _ in 0..<100 {
+        if !webView.isLoading { break }
+        try await Task.sleep(for: .milliseconds(20))
+      }
+      let flag = try await webView.callAsyncJavaScript(
+        "return window.flagAtBoot === true;", arguments: [:], in: nil, contentWorld: .page)
+      XCTAssertEqual(flag as? Bool, true)
+    }
+  }
+
   func testInspectionRequiresCatalogMembershipAndMatchingOpenPreview() async throws {
     let space = try XCTUnwrap(
       TonkSpace.decodeCatalog(
