@@ -161,6 +161,17 @@ struct ContentView: View {
 
   @ToolbarContentBuilder
   private var windowToolbar: some ToolbarContent {
+    if (model.openedSpace != nil || runtime.showsSpacePicker)
+      && (runtime.loading || runtime.catalogLoading)
+    {
+      ToolbarItem(id: "refresh-progress", placement: .navigation) {
+        ProgressView()
+          .controlSize(.small)
+          .frame(width: 16, height: 16)
+          .accessibilityLabel("Refreshing space")
+          .help("Refreshing…")
+      }.customGlassToolbarItem()
+    }
     if model.openedSpace != nil {
       ToolbarItem(id: "toggle-chat", placement: .navigation) {
         Button {
