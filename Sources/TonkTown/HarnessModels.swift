@@ -10,6 +10,7 @@ struct SubscriptionModel: Identifiable, Equatable {
 @MainActor
 extension HarnessModel {
   var modelLabel: String {
+    if provider == .disabled { return provider.title }
     if provider != .chatGPT {
       return connection.model.isEmpty ? "Choose a model" : connection.model
     }

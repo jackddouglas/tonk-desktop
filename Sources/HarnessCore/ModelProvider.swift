@@ -1,22 +1,32 @@
 import Foundation
 
 public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable {
-  case chatGPT, openAI, anthropic, openRouter, grok, local, compatible
+  case disabled, chatGPT, openAI, anthropic, gemini, openRouter, groq, mistral, ollama, grok, local,
+    compatible
   public var id: String { rawValue }
   public var title: String {
     switch self {
+    case .disabled: "Disabled"
+    case .gemini: "Google Gemini"
+    case .groq: "Groq"
+    case .mistral: "Mistral"
+    case .ollama: "Ollama"
     case .chatGPT: "ChatGPT subscription"
     case .openAI: "OpenAI API"
     case .anthropic: "Anthropic"
     case .openRouter: "OpenRouter"
     case .grok: "Grok (xAI)"
     case .local: "Local server"
-    case .compatible: "Other OpenAI-compatible API"
+    case .compatible: "Custom OpenAI-compatible"
     }
   }
   public var baseURL: String {
     switch self {
-    case .chatGPT: ""
+    case .disabled, .chatGPT: ""
+    case .gemini: "https://generativelanguage.googleapis.com/v1beta/openai"
+    case .groq: "https://api.groq.com/openai/v1"
+    case .mistral: "https://api.mistral.ai/v1"
+    case .ollama: "http://localhost:11434/v1"
     case .openAI: "https://api.openai.com/v1"
     case .anthropic: "https://api.anthropic.com/v1"
     case .openRouter: "https://openrouter.ai/api/v1"
@@ -25,7 +35,9 @@ public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable
     case .compatible: ""
     }
   }
-  public var requiresKey: Bool { ![.chatGPT, .local, .compatible].contains(self) }
+  public var requiresKey: Bool {
+    ![.disabled, .chatGPT, .ollama, .local, .compatible].contains(self)
+  }
 }
 
 public struct ModelConnection: Codable, Equatable, Sendable {
@@ -42,7 +54,8 @@ public struct ModelConnection: Codable, Equatable, Sendable {
     self.toolsEnabled = toolsEnabled
   }
   public func endpoint() throws -> URL {
-    guard provider != .chatGPT, !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    guard ![.disabled, .chatGPT].contains(provider),
+      !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     else {
       throw HarnessError.message("Enter a model ID from your provider or local server.")
     }
@@ -54,12 +67,12 @@ public struct ModelConnection: Codable, Equatable, Sendable {
     }
     let loopback = ["localhost", "127.0.0.1", "::1", "[::1]"].contains(host)
     guard url.scheme == "https" || (url.scheme == "http" && loopback),
-      provider != .local || loopback
+      ![.local, .ollama].contains(provider) || loopback
     else {
       throw HarnessError.message(
         "Local servers must use a loopback address. Remote APIs require HTTPS.")
     }
-    if ![.local, .compatible].contains(provider), baseURL != provider.baseURL {
+    if ![.local, .ollama, .compatible].contains(provider), baseURL != provider.baseURL {
       throw HarnessError.message(
         "Use this provider's standard endpoint, or choose Other OpenAI-compatible API.")
     }
@@ -71,10 +84,12 @@ public struct APIToolCall: Codable, Equatable, Sendable {
   public var id: String
   public var name: String
   public var arguments: JSONValue
-  public init(id: String, name: String, arguments: JSONValue) {
+  public var extraContent: JSONValue?
+  public init(id: String, name: String, arguments: JSONValue, extraContent: JSONValue? = nil) {
     self.id = id
     self.name = name
     self.arguments = arguments
+    self.extraContent = extraContent
   }
 }
 
@@ -84,15 +99,17 @@ public struct APIMessage: Codable, Equatable, Sendable {
   public var calls: [APIToolCall]
   public var toolID: String?
   public var isError: Bool
+  public var extraContent: JSONValue?
   public init(
     role: String, text: String = "", calls: [APIToolCall] = [], toolID: String? = nil,
-    isError: Bool = false
+    isError: Bool = false, extraContent: JSONValue? = nil
   ) {
     self.role = role
     self.text = text
     self.calls = calls
     self.toolID = toolID
     self.isError = isError
+    self.extraContent = extraContent
   }
   /// Never replay a tool whose result was lost during cancellation or shutdown.
   public static func repairingInterruptedTools(_ history: [APIMessage]) -> [APIMessage] {

@@ -47,16 +47,19 @@ public enum APIModelWire {
       var object: [String: JSONValue] = [
         "role": .string(message.role), "content": .string(message.text),
       ]
+      if let extra = message.extraContent { object["extra_content"] = extra }
       if let id = message.toolID { object["tool_call_id"] = .string(id) }
       if !message.calls.isEmpty {
         object["tool_calls"] = .array(
           message.calls.map { call in
-            .object([
+            var encoded: [String: JSONValue] = [
               "id": .string(call.id), "type": .string("function"),
               "function": .object([
                 "name": .string(call.name), "arguments": .string(json(call.arguments)),
               ]),
-            ])
+            ]
+            if let extra = call.extraContent { encoded["extra_content"] = extra }
+            return .object(encoded)
           })
       }
       return .object(object)
@@ -106,6 +109,8 @@ public struct APIStreamDecoder {
   public let anthropic: Bool
   public private(set) var text = ""
   public private(set) var finished = false
+  private var extraContent: JSONValue?
+  private var callExtras: [Int: JSONValue] = [:]
   private var reason: String?
   private var calls: [Int: (id: String, name: String, arguments: String)] = [:]
   public init(anthropic: Bool) { self.anthropic = anthropic }
@@ -141,12 +146,16 @@ public struct APIStreamDecoder {
       }
     } else {
       guard let choice = value["choices"].array.first else { return "" }
+      if choice["delta"]["extra_content"] != .null {
+        extraContent = choice["delta"]["extra_content"]
+      }
       delta = choice["delta"]["content"].string ?? ""
       reason = choice["finish_reason"].string ?? reason
       for tool in choice["delta"]["tool_calls"].array {
         guard let index = tool["index"].int else {
           throw HarnessError.message("The provider returned an invalid tool call.")
         }
+        if tool["extra_content"] != .null { callExtras[index] = tool["extra_content"] }
         var call = calls[index] ?? ("", "", "")
         call.id += tool["id"].string ?? ""
         call.name += tool["function"]["name"].string ?? ""
@@ -170,7 +179,7 @@ public struct APIStreamDecoder {
       throw HarnessError.message(
         "The model response ended early or reached its output limit. Pending tools were not run.")
     }
-    let parsed = try calls.sorted { $0.key < $1.key }.map { _, call -> APIToolCall in
+    let parsed = try calls.sorted { $0.key < $1.key }.map { index, call -> APIToolCall in
       guard !call.id.isEmpty, !call.name.isEmpty else {
         throw HarnessError.message("The provider returned an incomplete tool call.")
       }
@@ -179,7 +188,8 @@ public struct APIStreamDecoder {
       guard case .object = arguments else {
         throw HarnessError.message("Tool arguments must be a JSON object.")
       }
-      return APIToolCall(id: call.id, name: call.name, arguments: arguments)
+      return APIToolCall(
+        id: call.id, name: call.name, arguments: arguments, extraContent: callExtras[index])
     }
     guard Set(parsed.map(\.id)).count == parsed.count,
       parsed.isEmpty || ["tool_calls", "tool_use"].contains(reason)
@@ -189,7 +199,7 @@ public struct APIStreamDecoder {
     guard !text.isEmpty || !parsed.isEmpty else {
       throw HarnessError.message("The model returned an empty reply.")
     }
-    return APIMessage(role: "assistant", text: text, calls: parsed)
+    return APIMessage(role: "assistant", text: text, calls: parsed, extraContent: extraContent)
   }
 }
 

@@ -34,7 +34,12 @@ struct ProviderSettingsView: View {
         Picker("Provider", selection: $selected) {
           ForEach(ModelProvider.allCases) { provider in Text(provider.title).tag(provider) }
         }
-        if selected == .chatGPT {
+        if selected == .disabled {
+          Text(
+            "Browse your spaces with chat turned off. Saved chats and provider settings are kept."
+          )
+          .font(.caption).foregroundStyle(.secondary)
+        } else if selected == .chatGPT {
           if !model.subscriptionModels.isEmpty {
             Picker("Model", selection: $connection.model) {
               if !model.subscriptionModels.contains(where: { $0.id == connection.model }) {
@@ -56,11 +61,11 @@ struct ProviderSettingsView: View {
             "Model ID", text: $connection.model, prompt: Text("Enter the provider’s model ID")
           )
           .autocorrectionDisabled()
-          if selected == .local || selected == .compatible {
+          if selected == .local || selected == .ollama || selected == .compatible {
             TextField("Base URL", text: $connection.baseURL)
               .autocorrectionDisabled()
             Text(
-              selected == .local
+              [.local, .ollama].contains(selected)
                 ? "Use an OpenAI-compatible server, such as http://localhost:1234/v1 or http://localhost:11434/v1."
                 : "Enter the HTTPS base URL for an OpenAI-compatible API, including /v1 if required."
             )

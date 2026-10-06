@@ -4,8 +4,33 @@ import XCTest
 @testable import HarnessCore
 
 final class APIModelTests: XCTestCase {
+  func testGeminiToolSignatureSurvivesStreamStorageAndReplay() throws {
+    var decoder = APIStreamDecoder(anthropic: false)
+    _ = try decoder.accept(
+      #"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"tonk_query","arguments":"{}"},"extra_content":{"google":{"thought_signature":"opaque-signature"}}}]}}]}"#
+    )
+    _ = try decoder.accept(#"{"choices":[{"delta":{},"finish_reason":"tool_calls"}]}"#)
+    _ = try decoder.accept("[DONE]")
+    let reply = try JSONDecoder().decode(
+      APIMessage.self, from: JSONEncoder().encode(decoder.result()))
+    let request = try APIModelWire.request(
+      connection: ModelConnection(provider: .gemini, model: "fixture"), key: "fixture-key",
+      instructions: "", history: [reply], tools: [])
+    let body = try JSONDecoder().decode(JSONValue.self, from: request.httpBody!)
+    XCTAssertEqual(
+      body["messages"].array[1]["tool_calls"].array[0]["extra_content"]["google"][
+        "thought_signature"
+      ].string, "opaque-signature")
+    XCTAssertEqual(
+      request.url?.absoluteString,
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+  }
+
   func testEndpointsAndMigration() throws {
-    for provider in [ModelProvider.openAI, .anthropic, .openRouter, .grok, .local] {
+    for provider in [
+      ModelProvider.openAI, .anthropic, .openRouter, .gemini, .groq, .mistral, .ollama, .grok,
+      .local,
+    ] {
       let endpoint = try ModelConnection(provider: provider, model: "test-model").endpoint()
       XCTAssertEqual(
         endpoint.lastPathComponent, provider == .anthropic ? "messages" : "completions")
@@ -33,7 +58,10 @@ final class APIModelTests: XCTestCase {
       APIMessage(role: "user", text: "Inspect"), APIMessage(role: "assistant", calls: [call]),
       APIMessage(role: "tool", text: "result", toolID: call.id),
     ]
-    for provider in [ModelProvider.openAI, .anthropic, .openRouter, .grok, .local, .compatible] {
+    for provider in [
+      ModelProvider.openAI, .anthropic, .openRouter, .gemini, .groq, .mistral, .ollama, .grok,
+      .local, .compatible,
+    ] {
       var config = ModelConnection(
         provider: provider, baseURL: provider == .compatible ? "https://example.com/v1" : nil,
         model: "test")

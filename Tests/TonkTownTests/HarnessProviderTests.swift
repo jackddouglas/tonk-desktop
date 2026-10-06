@@ -6,6 +6,30 @@ import XCTest
 
 final class HarnessProviderTests: XCTestCase {
   @MainActor
+  func testDisabledProviderPreventsRequestsAndPreservesConfiguration() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let client = APIModelClient { _, _, _ in
+      XCTFail("Disabled chat must not issue a request")
+      return APIMessage(role: "assistant", text: "unexpected")
+    }
+    let model = HarnessModel(directory: directory, apiClient: client)
+    let local = ModelConnection(provider: .ollama, model: "test")
+    try await model.configureProvider(.ollama, connection: local, key: "")
+    XCTAssertTrue(model.canSend)
+    try await model.configureProvider(
+      .disabled, connection: ModelConnection(provider: .disabled), key: "")
+    XCTAssertFalse(model.canSend)
+    await model.send("Do not send this")
+    XCTAssertTrue(model.saved.conversation.messages.isEmpty)
+    XCTAssertEqual(model.saved.connections?["ollama"], local)
+    let reopened = HarnessModel(directory: directory)
+    await reopened.connect()
+    XCTAssertEqual(reopened.provider, .disabled)
+    XCTAssertFalse(reopened.canSend)
+  }
+
+  @MainActor
   func testLocalAgentProposalPersistsAndSwitchArchivesWithoutForwardingHistory() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
       "provider-test-" + UUID().uuidString)

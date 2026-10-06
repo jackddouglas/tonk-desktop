@@ -15,7 +15,7 @@ extension HarnessModel {
     guard storageAvailable, !connecting, !busy, !creatingSpace, !loginPending else {
       throw HarnessError.message("Finish the current operation before changing providers.")
     }
-    if selected != .chatGPT {
+    if ![.chatGPT, .disabled].contains(selected) {
       _ = try next.endpoint()
       let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
       if !trimmedKey.isEmpty { try credentials.write(trimmedKey, for: next) }
@@ -48,6 +48,12 @@ extension HarnessModel {
   }
 
   func connectAPI() throws {
+    if provider == .disabled {
+      connected = false
+      signedIn = false
+      accountLabel = "Chat disabled"
+      return
+    }
     _ = try connection.endpoint()
     apiKey = try credentials.read(connection)
     connected = true

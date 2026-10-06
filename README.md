@@ -59,12 +59,14 @@ Keep ChatGPT subscription sign-in, or choose:
 
 - **OpenAI API**: OpenAI API key and model ID, distinct from ChatGPT subscription sign-in.
 - **Anthropic**: API key and model ID, using the Messages API.
-- **OpenRouter** or **Grok (xAI)**: API key and model ID.
+- **Google Gemini**, **OpenRouter**, **Groq**, **Mistral**, or **Grok (xAI)**: API key and model ID.
+- **Ollama**: a running local server (defaults to `http://localhost:11434/v1`) and an installed model ID.
+- **Disabled**: browse spaces without sending chat requests; saved providers and chats are retained.
 - **Local server**: an OpenAI-compatible streaming Chat Completions endpoint,
   such as `http://localhost:1234/v1` or `http://localhost:11434/v1`, and the model
   ID loaded by that server. The app connects to an existing server; it does not
   download models or launch the model server. Keys are optional.
-- **Other OpenAI-compatible API**: a custom HTTPS base URL, model ID, and optional key.
+- **Custom OpenAI-compatible**: a custom HTTPS base URL, model ID, and optional key.
 
 Keys are stored in macOS Keychain, separately from transcripts, and scoped to the
 provider and base URL. Leave the key blank to retain it; **Remove saved key** deletes
@@ -238,3 +240,13 @@ space-scoped conversation.
 
 For isolated onboarding QA, pair `--data-dir /tmp/your-test-profile` with
 `--web-data-id <UUID>` to isolate the WebKit account as well as native chat state.
+
+### Focused space reads
+
+`tonk_query` accepts optional `fields` (column names) and `equals` (exact saved values).
+For an assignee query, resolve the person record first, then filter by its saved Entity URI.
+Results retain record identities and a complete `totalMatches` per block; oversized output
+fails explicitly rather than returning a partial count. Filtering/projection happens in the
+harness after the read-only worker query, so the 2 MB worker-response ceiling still applies.
+Existing ChatGPT threads retain their original tool schemas; start a new chat for the expanded
+query arguments. API chats and MCP clients receive the current definitions.
