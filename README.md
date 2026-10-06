@@ -7,7 +7,7 @@ WKWebView runs Tonk's existing web app.
 
 ## Run
 
-Requires macOS 15+ and Xcode command-line tools with Swift 6.0+.
+Requires macOS 15+ and full Xcode 26+ with Swift 6.0+ and Icon Composer.
 ChatGPT subscription sign-in also requires the
 [Codex CLI](https://learn.chatgpt.com/docs/cli); API providers do not. Developed with Swift 6.4 and
 Codex CLI 0.159.3. Markdown rendering and native drag selection use Textual; SwiftPM resolves its dependencies.
@@ -16,6 +16,11 @@ Codex CLI 0.159.3. Markdown rendering and native drag selection use Textual; Swi
 bash scripts/build-app.sh
 open ".build/Tonk.app"
 ```
+
+The build compiles `Resources/Tonk.icon` into the native layered app icon and
+an `.icns` fallback. Its vector circles reproduce the colors and proportions of
+`rust/tonk-ui/assets/images/tonk-icon.png` in the Tonk monorepo: raspberry
+`#AA2659`, blue `#71BBE7`, and yellow `#D9E020`. Edit the layers in Icon Composer.
 
 Local builds use the single available **Apple Development** signing identity.
 For multiple identities, set `TONK_TOWN_SIGN_IDENTITY` to the desired certificate

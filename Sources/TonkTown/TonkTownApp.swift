@@ -60,6 +60,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   weak var runtime: RuntimeModel?
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.regular)
+    // Resolve the compiled bundle icon explicitly: automatic AppKit lookup can
+    // leave this SwiftPM-built app with a transparent Dock and switcher icon.
+    if Bundle.main.object(forInfoDictionaryKey: "CFBundleIconName") != nil {
+      let icon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
+      let size = NSSize(width: 1024, height: 1024)
+      icon.size = size
+      // Supply actual pixels, not just a logical point size, to the Dock.
+      if let bitmap = NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 1024, pixelsHigh: 1024,
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+        let context = NSGraphicsContext(bitmapImageRep: bitmap)
+      {
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        icon.draw(in: NSRect(origin: .zero, size: size))
+        NSGraphicsContext.restoreGraphicsState()
+        let dockIcon = NSImage(size: size)
+        dockIcon.addRepresentation(bitmap)
+        NSApp.applicationIconImage = dockIcon
+      }
+    }
     NSApp.activate(ignoringOtherApps: true)
   }
   func applicationWillTerminate(_ notification: Notification) {

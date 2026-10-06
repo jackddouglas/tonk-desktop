@@ -23,6 +23,12 @@ mkdir -p "$app/Contents/MacOS"
 mkdir -p "$app/Contents/Resources"
 cp .build/debug/TonkTown "$app/Contents/MacOS/TonkTown"
 cp Resources/Info.plist "$app/Contents/Info.plist"
+xcrun actool Resources/Tonk.icon \
+    --compile "$app/Contents/Resources" \
+    --platform macosx --minimum-deployment-target 15.0 \
+    --app-icon Tonk \
+    --output-partial-info-plist "$PWD/.build/tonk-icon-info.plist"
+/usr/libexec/PlistBuddy -c "Merge '$PWD/.build/tonk-icon-info.plist'" "$app/Contents/Info.plist"
 for bundle in .build/debug/textual_Textual.bundle .build/debug/swiftui-math_SwiftUIMath.bundle; do
     ditto "$bundle" "$app/Contents/Resources/$(basename "$bundle")"
 done
