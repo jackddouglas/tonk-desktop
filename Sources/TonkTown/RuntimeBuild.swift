@@ -78,8 +78,7 @@ extension RuntimeModel {
     guard let response = result["response"] as? String else {
       throw HarnessError.message("The worker returned no evaluation response.")
     }
-    return try SpaceBuildTools.result(
-      Data(response.utf8), query: tool == "tonk_query" ? arguments : nil)
+    return try SpaceBuildTools.result(Data(response.utf8))
   }
 
   static let evaluateReadOnlyScript = """

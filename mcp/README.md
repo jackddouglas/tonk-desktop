@@ -62,3 +62,10 @@ existing CLI remains available during migration.
 
 Run `npm test` for a separate-process SDK client/server test; `swift test --filter
 LocalRuntimeBridgeTests` covers the real native loopback authorization boundary.
+
+`tonk_query` accepts an inline Tonk notation `document` and forwards it unchanged
+to read-only evaluate. Use schema-derived attribute-domain heads for projection,
+quoted text literals, and saved Entity URIs for filters. Resolve people before
+querying assignments. Concept-only `target` remains compatible with older clients;
+host-side `fields`/`equals` filtering is no longer supported. No records are silently
+truncated. See the focused space reads section in the root README.

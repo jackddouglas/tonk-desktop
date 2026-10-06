@@ -243,10 +243,36 @@ For isolated onboarding QA, pair `--data-dir /tmp/your-test-profile` with
 
 ### Focused space reads
 
-`tonk_query` accepts optional `fields` (column names) and `equals` (exact saved values).
-For an assignee query, resolve the person record first, then filter by its saved Entity URI.
-Results retain record identities and a complete `totalMatches` per block; oversized output
-fails explicitly rather than returning a partial count. Filtering/projection happens in the
-harness after the read-only worker query, so the 2 MB worker-response ceiling still applies.
-Existing ChatGPT threads retain their original tool schemas; start a new chat for the expanded
-query arguments. API chats and MCP clients receive the current definitions.
+`tonk_query` takes `{ "document": "…inline Tonk notation…" }` and forwards it
+unchanged to the existing `evaluate?transact=false` endpoint. Neither the harness
+nor an extra worker endpoint implements filtering or projection.
+
+Read `tonk_space_schema` to find attribute domains. Concept queries return the
+whole concept, including omitted fields. Domain queries return just the fields
+written in the query. For example, after resolving one person record:
+
+```yaml
+test.issue:
+  this: ?issue
+  assignee: id:jack
+  title: ?title
+  status: "In progress"
+```
+
+Here `test.issue` and `id:jack` are fixture values, not defaults. Use actual schema
+attribute domains and saved entity URIs. Quote literal strings: bare `jack` means
+name resolution, not text. Resolve people separately before querying assignments;
+an empty join can still return independent matches in other blocks. Query each
+active status separately when needed and count distinct issue identities only
+from complete results. No aggregate syntax is assumed.
+
+The 2 MB worker response and 100 KB matches limits remain; oversized results fail
+explicitly, never silently truncate. Original `{ "target": "concept" }` callers
+still work. The short-lived host-side `fields`/`equals` arguments now return a
+migration error. Start a new ChatGPT chat to receive the current tool schema.
+
+For a real-worker regression, serve the existing runtime using
+`scripts/serve-local-runtime.py`, then run `scripts/smoke-thin-query.js` through
+an isolated browser as described in `scripts/local-build-smoke.md`. It verifies
+person resolution, exact assignment/status filtering, projection of a 120 KB body,
+zero matches, and unchanged revisions with zero committed claims.

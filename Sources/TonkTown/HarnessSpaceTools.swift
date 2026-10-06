@@ -30,12 +30,23 @@ extension HarnessModel {
       The harness connects space tools automatically. Read existing schema first.
       \(cliGuidance)
       When available, prefer tonk_query and tonk_preview for direct local reads and validation.
-      For record questions, use tonk_query with fields for only the required columns,
-      avoiding body/source fields. Use equals for exact saved values. For "me" or a named
-      assignee, query the people schema/records first and resolve the actual person URI;
-      never use a bare name as an Entity or assume the signed-in account identifies a person.
-      If multiple people match, ask the user. Count only complete results and distinguish
-      active statuses from completed/cancelled using the actual stored status values.
+      tonk_query accepts a document of Tonk notation, evaluated read-only as written.
+      Concept heads return all schema fields, including omitted large body/source fields.
+      For focused reads use attribute-domain heads from tonk_space_schema: an attribute
+      like team.issue/assignee becomes head team.issue with field assignee. Do not guess
+      domains or assume concept field aliases equal attribute names. Domain queries
+      return only explicitly listed fields. Share this: ?issue across domains when needed.
+      Quote text literals (name: "jack"); bare jack is a name reference, not text.
+      Entity filters use exact saved URIs (assignee: id:example), never a guessed name.
+      For "me" or a named assignee, first query people and resolve one actual person URI.
+      If none or multiple match, clarify. Then issue a separate query filtered by that URI.
+      Do not count independent issue matches from a joined response with an empty person
+      block: the evaluator can return per-expression matches when the join is empty.
+      More generally, do not treat any joined response with an empty required block as
+      a successful intersection. Use separate exact-identity reads when in doubt.
+      Query each actual active status separately if needed; count unique issue identities
+      from complete results only. Do not invent aggregate or OR syntax. Domain queries
+      constrain attribute presence, not necessarily every required field of a concept.
       These use the preview's replica without a CLI or network pull. tonk_preview does not
       render proposed changes or return a proposed-state diff. Use tonk_apply with the
       exact revision from preview for authorized writes when the worker supports it.
