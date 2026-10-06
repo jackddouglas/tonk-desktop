@@ -12,7 +12,7 @@ NO_COLOR=true nix develop --command trunk build \
   --dist /tmp/tonk-conditional-runtime-dist
 ```
 
-From Tonk Town, serve the built assets:
+From Tonk, serve the built assets:
 
 ```sh
 python3 scripts/serve-local-runtime.py /tmp/tonk-conditional-runtime-dist
@@ -65,7 +65,7 @@ With the same static server running, build the signed app and launch:
 
 ```sh
 bash scripts/build-app.sh
-open '.build/Tonk Town.app' --args --local-runtime --seed-local-fixture
+open '.build/Tonk.app' --args --local-runtime --seed-local-fixture
 ```
 
 This uses separate local application and WebKit data and requires its own ChatGPT

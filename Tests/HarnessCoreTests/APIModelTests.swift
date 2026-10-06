@@ -52,7 +52,7 @@ final class APIModelTests: XCTestCase {
     XCTAssertNil(saved.conversation.apiHistory)
   }
 
-  func testProviderWireFormatsAndTextOnlyMode() throws {
+  func testProviderWireFormatsAlwaysIncludeTools() throws {
     let call = APIToolCall(id: "call-1", name: "tonk_space_info", arguments: .object([:]))
     let history = [
       APIMessage(role: "user", text: "Inspect"), APIMessage(role: "assistant", calls: [call]),
@@ -62,7 +62,7 @@ final class APIModelTests: XCTestCase {
       ModelProvider.openAI, .anthropic, .openRouter, .gemini, .groq, .mistral, .ollama, .grok,
       .local, .compatible,
     ] {
-      var config = ModelConnection(
+      let config = ModelConnection(
         provider: provider, baseURL: provider == .compatible ? "https://example.com/v1" : nil,
         model: "test")
       let request = try APIModelWire.request(
@@ -82,13 +82,25 @@ final class APIModelTests: XCTestCase {
         XCTAssertEqual(body["messages"].array[0]["content"].string, "Soul")
         XCTAssertEqual(body["messages"].array[3]["tool_call_id"].string, call.id)
       }
-      config.toolsEnabled = false
-      let plain = try APIModelWire.request(
-        connection: config, key: "fixture-key", instructions: "Soul", history: [],
-        tools: SpaceTools.agentDefinitions(includeCLI: false))
-      XCTAssertEqual(
-        try JSONDecoder().decode(JSONValue.self, from: plain.httpBody!)["tools"], .null)
+      if provider == .openRouter {
+        XCTAssertEqual(body["provider"]["require_parameters"].bool, true)
+      } else {
+        XCTAssertEqual(body["provider"], .null)
+      }
     }
+  }
+
+  func testLegacyTextOnlyConfigurationNowIncludesTools() throws {
+    let legacy =
+      #"{"provider":"local","baseURL":"http://localhost:1234/v1","model":"fixture","toolsEnabled":false}"#
+    let connection = try JSONDecoder().decode(ModelConnection.self, from: Data(legacy.utf8))
+    let request = try APIModelWire.request(
+      connection: connection, key: "", instructions: "", history: [],
+      tools: SpaceTools.agentDefinitions(includeCLI: false))
+    let body = try JSONDecoder().decode(JSONValue.self, from: request.httpBody!)
+    XCTAssertFalse(body["tools"].array.isEmpty)
+    let saved = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(connection))
+    XCTAssertEqual(saved["toolsEnabled"], .null)
   }
 
   func testFragmentedOpenAIToolsAndTruncation() throws {

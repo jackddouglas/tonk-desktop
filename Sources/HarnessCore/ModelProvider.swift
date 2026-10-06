@@ -44,14 +44,12 @@ public struct ModelConnection: Codable, Equatable, Sendable {
   public var provider: ModelProvider
   public var baseURL: String
   public var model: String
-  public var toolsEnabled: Bool
   public init(
-    provider: ModelProvider, baseURL: String? = nil, model: String = "", toolsEnabled: Bool = true
+    provider: ModelProvider, baseURL: String? = nil, model: String = ""
   ) {
     self.provider = provider
     self.baseURL = baseURL ?? provider.baseURL
     self.model = model
-    self.toolsEnabled = toolsEnabled
   }
   public func endpoint() throws -> URL {
     guard ![.disabled, .chatGPT].contains(provider),

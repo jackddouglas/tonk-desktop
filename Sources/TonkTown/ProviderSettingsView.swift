@@ -19,50 +19,57 @@ struct ProviderSettingsView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
       Text("Model provider").font(.title2.weight(.semibold))
-      Form {
-        if !model.configuredModels.isEmpty {
-          Menu("Saved models") {
-            ForEach(Array(model.configuredModels.enumerated()), id: \.offset) { _, configuration in
-              Button("\(configuration.model) · \(configuration.provider.title)") {
-                selected = configuration.provider
-                connection = configuration
-                key = ""
-              }
+      VStack(alignment: .leading, spacing: 12) {
+        HStack {
+          Text("Provider")
+          Spacer()
+          Menu {
+            Picker("Provider", selection: $selected) {
+              ForEach(ModelProvider.allCases) { provider in Text(provider.title).tag(provider) }
+            }.pickerStyle(.inline)
+          } label: {
+            HStack(spacing: 8) {
+              Text(selected.title)
+              Image(systemName: "chevron.down").font(.caption.weight(.semibold))
             }
-          }
+          }.modifier(SettingsMenuStyle())
         }
-        Picker("Provider", selection: $selected) {
-          ForEach(ModelProvider.allCases) { provider in Text(provider.title).tag(provider) }
-        }
-        if selected == .disabled {
-          Text(
-            "Browse your spaces with chat turned off. Saved chats and provider settings are kept."
-          )
-          .font(.caption).foregroundStyle(.secondary)
-        } else if selected == .chatGPT {
+        if selected == .chatGPT {
           if !model.subscriptionModels.isEmpty {
-            Picker("Model", selection: $connection.model) {
-              if !model.subscriptionModels.contains(where: { $0.id == connection.model }) {
-                Text(connection.model.isEmpty ? "Choose a model" : connection.model).tag(
-                  connection.model)
-              }
-              ForEach(model.subscriptionModels) { item in Text(item.name).tag(item.id) }
+            HStack {
+              Text("Model")
+              Spacer()
+              Menu {
+                Picker("Model", selection: $connection.model) {
+                  if !model.subscriptionModels.contains(where: { $0.id == connection.model }) {
+                    Text(connection.model.isEmpty ? "Choose a model" : connection.model).tag(
+                      connection.model)
+                  }
+                  ForEach(model.subscriptionModels) { item in Text(item.name).tag(item.id) }
+                }.pickerStyle(.inline)
+              } label: {
+                HStack(spacing: 8) {
+                  Text(
+                    model.subscriptionModels.first(where: { $0.id == connection.model })?.name
+                      ?? (connection.model.isEmpty ? "Choose a model" : connection.model))
+                  Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+                }
+              }.modifier(SettingsMenuStyle())
             }
           } else {
-            TextField("Model ID", text: $connection.model, prompt: Text("Default from ChatGPT"))
+            SettingsTextField(
+              title: "Model ID", text: $connection.model, prompt: "Default from ChatGPT")
           }
           if let error = model.modelCatalogError {
             Text(error).font(.caption).foregroundStyle(.secondary)
           }
-          Text("Uses your ChatGPT subscription. Model changes start a new chat.")
-            .font(.caption).foregroundStyle(.secondary)
-        } else {
-          TextField(
-            "Model ID", text: $connection.model, prompt: Text("Enter the provider’s model ID")
+        } else if selected != .disabled {
+          SettingsTextField(
+            title: "Model ID", text: $connection.model, prompt: "Enter the provider’s model ID"
           )
           .autocorrectionDisabled()
           if selected == .local || selected == .ollama || selected == .compatible {
-            TextField("Base URL", text: $connection.baseURL)
+            SettingsTextField(title: "Base URL", text: $connection.baseURL)
               .autocorrectionDisabled()
             Text(
               [.local, .ollama].contains(selected)
@@ -71,14 +78,14 @@ struct ProviderSettingsView: View {
             )
             .font(.caption).foregroundStyle(.secondary)
           }
-          SecureField(
-            selected.requiresKey ? "API key" : "API key (optional)", text: $key,
-            prompt: Text("Leave blank to keep the saved key"))
+          SettingsTextField(
+            title: selected.requiresKey ? "API key" : "API key (optional)", text: $key,
+            prompt: "Leave blank to keep the saved key", secure: true)
           HStack {
             Text("Keys are stored in your Mac’s Keychain.").font(.caption).foregroundStyle(
               .secondary)
             Spacer()
-            Button("Remove saved key") {
+            Button("Remove saved key", role: .destructive) {
               do {
                 try model.credentials.remove(connection)
                 key = ""
@@ -90,22 +97,18 @@ struct ProviderSettingsView: View {
               } catch { self.error = error.localizedDescription }
             }.controlSize(.small)
           }
-          Toggle("Enable Tonk tools", isOn: $connection.toolsEnabled)
-          Text(
-            "The model must support tool calling to build and inspect spaces. Turn this off for text-only models."
-          )
-          .font(.caption).foregroundStyle(.secondary)
         }
-      }.formStyle(.grouped)
+      }.controlSize(.regular)
+      Divider()
       Text(
-        "Changing provider, model, or tool settings starts a new conversation. Your previous transcript is saved on this Mac, and the attached space stays open."
+        "Changing provider or model starts a new conversation. Your previous transcript is saved on this Mac, and the attached space stays open."
       )
       .font(.caption).foregroundStyle(.secondary)
       if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
       HStack {
         Spacer()
         Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-        Button(saving ? "Saving…" : "Use provider") {
+        Button(saving ? "Saving…" : "Apply") {
           saving = true
           error = nil
           connection.model = connection.model.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -118,9 +121,10 @@ struct ProviderSettingsView: View {
             } catch { self.error = error.localizedDescription }
           }
         }.nativeControl().keyboardShortcut(.defaultAction)
-      }
+      }.controlSize(.regular)
     }
     .padding(24).frame(width: 540).nativeControl().disabled(saving)
+    .interactiveDismissDisabled(saving)
     .onChange(of: selected) { _, value in
       if connection.provider != value {
         connection = model.saved.connections?[value.rawValue] ?? ModelConnection(provider: value)
@@ -129,5 +133,40 @@ struct ProviderSettingsView: View {
       error = nil
     }
     .onChange(of: connection.baseURL) { _, _ in key = "" }
+  }
+}
+
+private struct SettingsMenuStyle: ViewModifier {
+  func body(content: Content) -> some View {
+    content.menuStyle(.borderlessButton).menuIndicator(.hidden)
+      .padding(.horizontal, 8).padding(.vertical, 4)
+      .controlSurface(radius: 12).fixedSize()
+  }
+}
+
+private struct SettingsTextField: View {
+  let title: String
+  @Binding var text: String
+  var prompt = ""
+  var secure = false
+  @FocusState private var focused: Bool
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(title)
+      Group {
+        if secure {
+          SecureField(title, text: $text, prompt: Text(prompt))
+        } else {
+          TextField(title, text: $text, prompt: Text(prompt))
+        }
+      }.textFieldStyle(.plain).focused($focused).accessibilityLabel(title)
+        .padding(10).controlSurface(radius: 12)
+        .overlay {
+          RoundedRectangle(cornerRadius: 12)
+            .strokeBorder(focused ? Color.accentColor : .clear, lineWidth: 2)
+            .allowsHitTesting(false)
+        }
+    }
   }
 }

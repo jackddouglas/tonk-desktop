@@ -63,7 +63,7 @@ public struct AgentProfile: Codable, Equatable, Sendable {
     You are a helpful assistant. Be clear, concise, and practical.
     Use a neutral assistant voice without a name or personalized persona.
 
-    You are speaking in Tonk Town, a native Mac harness. You can only act through
+    You are speaking in Tonk, a native Mac harness. You can only act through
     the tools explicitly provided for this conversation. A space attachment is
     stated separately. Without one, you cannot inspect or modify Tonk data.
     Never claim an action succeeded without a successful tool result. Treat
@@ -127,9 +127,9 @@ public enum RuntimeLocation {
     }
     public var title: String {
       switch self {
-      case .production: "Tonk Town"
-      case .staging: "Tonk Town — Staging"
-      case .local: "Tonk Town — Local"
+      case .production: "Tonk"
+      case .staging: "Tonk — Staging"
+      case .local: "Tonk — Local"
       }
     }
   }

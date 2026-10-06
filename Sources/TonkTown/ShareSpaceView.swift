@@ -28,13 +28,13 @@ struct ShareSpaceView: View {
           .accessibilityLabel(copied ? "Invitation copied" : "Your invitation is ready")
       }
       HStack {
-        Button("Done") { dismiss() }.keyboardShortcut(.cancelAction).disabled(creating)
         Spacer()
+        Button("Done") { dismiss() }.keyboardShortcut(.cancelAction).disabled(creating)
         if let link {
           Button(copied ? "Copy again" : "Copy invitation") {
             NSPasteboard.general.clearContents()
             copied = NSPasteboard.general.setString(link.absoluteString, forType: .string)
-          }
+          }.nativeControl(prominent: true).keyboardShortcut(.defaultAction)
         } else if !failed {
           Button("Create invitation") {
             creating = true
@@ -42,9 +42,9 @@ struct ShareSpaceView: View {
               do { link = try await runtime.createShareLink(space) } catch { failed = true }
               creating = false
             }
-          }.disabled(creating)
+          }.nativeControl(prominent: true).keyboardShortcut(.defaultAction).disabled(creating)
         }
-      }
+      }.controlSize(.large)
     }
     .padding(24).frame(width: 420).nativeControl()
     .interactiveDismissDisabled(creating)

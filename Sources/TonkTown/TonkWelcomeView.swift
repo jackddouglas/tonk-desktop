@@ -8,7 +8,7 @@ struct TonkWelcomeView: View {
       Image(systemName: "square.grid.2x2").font(.system(size: 48, weight: .light))
         .foregroundStyle(.secondary)
       VStack(spacing: 12) {
-        Text("Welcome to Tonk Town").font(.largeTitle.weight(.semibold))
+        Text("Welcome to Tonk").font(.largeTitle.weight(.semibold))
         Text("Your spaces, with a chat to help you build.")
           .font(.title3).foregroundStyle(.secondary)
       }
@@ -25,7 +25,7 @@ struct TonkWelcomeView: View {
         } else {
           Button("Sign in to Tonk", systemImage: "person.crop.circle.badge.checkmark") {
             Task { await runtime.signIn() }
-          }.nativeControl().controlSize(.large)
+          }.nativeControl(prominent: true).controlSize(.large)
             .disabled(runtime.loading)
           Text(
             "Use your existing Tonk passkey in your browser.\nYou’ll return here when sign-in is complete."

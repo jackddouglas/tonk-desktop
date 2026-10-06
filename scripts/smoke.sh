@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-app="$PWD/.build/Tonk Town.app"
+app="$PWD/.build/Tonk.app"
 if [[ ! -d "$app" ]]; then
     echo "Build the app first: bash scripts/build-app.sh" >&2
     exit 1

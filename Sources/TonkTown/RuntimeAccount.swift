@@ -75,7 +75,7 @@ extension RuntimeModel {
       url.queryItems = [
         URLQueryItem(name: "audience", value: device),
         URLQueryItem(name: "callback", value: callbackURL.absoluteString),
-        URLQueryItem(name: "name", value: "Tonk Town"),
+        URLQueryItem(name: "name", value: "Tonk"),
       ]
       if let root = identity["rootDid"] as? String, !root.isEmpty {
         url.queryItems?.append(URLQueryItem(name: "expectedAccount", value: root))

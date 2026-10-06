@@ -26,8 +26,9 @@ struct TonkTownApp: App {
         }
     }
     .defaultSize(width: 1180, height: 780)
-    .windowToolbarStyle(.unifiedCompact)
+    .windowToolbarStyle(.unified)
     .commands {
+      WindowCommands()
       CommandGroup(replacing: .newItem) {
         Button("New chat") {
           model.startSpaceChat()
@@ -47,7 +48,7 @@ private struct WindowAppearance: NSViewRepresentable {
   private final class SeparatorlessView: NSView {
     override func viewDidMoveToWindow() {
       super.viewDidMoveToWindow()
-      // The automatic separator spans both panes at the taller chat header's edge.
+      // Let the window material blend into the glass control layer.
       window?.titlebarSeparatorStyle = .none
     }
   }

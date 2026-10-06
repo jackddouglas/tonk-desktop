@@ -2,6 +2,7 @@ import HarnessCore
 import SwiftUI
 
 struct ContentView: View {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @ObservedObject var model: HarnessModel
   @ObservedObject var runtime: RuntimeModel
   private var draft: String {
@@ -15,6 +16,8 @@ struct ContentView: View {
     get { model.showingChat }
     nonmutating set { model.showingChat = newValue }
   }
+  @State private var spaceSearch = ""
+  @State private var searchFocusRequest = 0
   @State private var showHistory = false
   @State private var showProviderSettings = false
   @State private var accountError: String?
@@ -25,7 +28,7 @@ struct ContentView: View {
   var body: some View {
     ZStack {
       HSplitView {
-        if showingChat { chat.frame(minWidth: 340, idealWidth: 440) }
+        if showingChat { chat.frame(minWidth: 340, idealWidth: 400, maxWidth: 560) }
         workspace.frame(minWidth: 380, maxWidth: .infinity)
       }
       .opacity(model.openedSpace != nil ? 1 : 0)
@@ -34,32 +37,40 @@ struct ContentView: View {
       if model.openedSpace == nil {
         if !runtime.accountConnected && RuntimeLocation.deployment != .local {
           TonkWelcomeView(runtime: runtime)
-            .overlay(alignment: .topTrailing) { accountMenu.padding(24) }
+
         } else {
-          VStack(alignment: .leading, spacing: 16) {
-            HStack {
-              Text("Your spaces").font(.largeTitle.weight(.semibold))
-              Spacer()
-              Button("Refresh", systemImage: "arrow.clockwise") {
-                Task { await runtime.refreshSpaces() }
+          SpacePickerView(runtime: runtime, search: $spaceSearch) { space in
+            Task {
+              if await model.enterSpace(space) {
+                runtime.openSpace(space)
+                model.openedSpace = space
+                showingChat = false
               }
-              .disabled(runtime.catalogLoading)
-              accountMenu
-            }.controlSize(.large).padding(.horizontal, 28).padding(.top, 28)
-            SpacePickerView(runtime: runtime) { space in
-              Task {
-                if await model.enterSpace(space) {
-                  runtime.openSpace(space)
-                  model.openedSpace = space
-                  showingChat = false
-                }
-              }
-            }.disabled(model.busy || model.connecting || model.creatingSpace)
-          }.background(.background)
+            }
+          }.disabled(model.busy || model.connecting || model.creatingSpace)
         }
       }
     }
     .nativeControl()
+    .containerBackground(
+      reduceTransparency
+        ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor)) : AnyShapeStyle(.thinMaterial),
+      for: .window
+    )
+    .focusedSceneValue(
+      \.modelSettings, accountActionsDisabled || signingOut ? nil : { showProviderSettings = true }
+    )
+    .focusedSceneValue(
+      \.focusSearch,
+      model.openedSpace == nil && (runtime.accountConnected || RuntimeLocation.deployment == .local)
+        ? { searchFocusRequest += 1 } : nil
+    )
+    .navigationTitle(model.openedSpace?.title ?? "Spaces")
+    .navigationSubtitle(
+      RuntimeLocation.deployment == .production ? "" : RuntimeLocation.deployment.title
+    )
+    .toolbar { windowToolbar }
+    .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
     .disabled(signingOut)
     .alert(
       "Couldn’t sign out",
@@ -95,7 +106,8 @@ struct ContentView: View {
         }
       }
     }
-    .onChange(of: showingChat) { _, visible in if !visible { composing = false } }
+    .onChange(of: showingChat) { _, visible in composing = visible }
+    .onChange(of: model.saved.activeSessionID) { _, _ in composing = showingChat }
   }
 
   private var accountActionsDisabled: Bool {
@@ -106,7 +118,6 @@ struct ContentView: View {
   @ViewBuilder
   private var accountActions: some View {
     Button("Model settings…", systemImage: "slider.horizontal.3") { showProviderSettings = true }
-      .keyboardShortcut(",", modifiers: .command)
       .disabled(accountActionsDisabled)
     if model.provider == .chatGPT && model.signedIn {
       Button("Sign out of ChatGPT") { Task { await model.signOut() } }
@@ -127,37 +138,105 @@ struct ContentView: View {
     }
   }
 
-  private var accountMenu: some View {
-    Menu {
-      accountActions
-    } label: {
-      Label("Account", systemImage: "person.crop.circle").frame(height: 20)
-    }.menuStyle(.borderlessButton).menuIndicator(.hidden)
-      .padding(.horizontal, 14).frame(height: 34).controlSurface(radius: 17).fixedSize()
+  private var chatActionsDisabled: Bool {
+    model.busy || model.connecting || model.creatingSpace || model.loginPending
   }
 
-  private func spaceChatActions(compact: Bool) -> some View {
-    HStack(spacing: 8) {
-      Button {
-        model.startSpaceChat()
-      } label: {
-        if compact {
-          Image(systemName: "square.and.pencil").frame(width: 20, height: 20)
+  @ToolbarContentBuilder
+  private var windowToolbar: some ToolbarContent {
+    if model.openedSpace != nil {
+      ToolbarItem(id: "toggle-chat", placement: .navigation) {
+        Button {
+          showingChat.toggle()
+        } label: {
+          Image(systemName: "sidebar.left").frame(width: 20, height: 20)
+        }.nativeControl(circular: true)
+          .accessibilityLabel(showingChat ? "Hide chat" : "Show chat")
+          .help(showingChat ? "Hide chat" : "Show chat")
+          .keyboardShortcut("0", modifiers: [.command, .option])
+      }.customGlassToolbarItem()
+    }
+    if model.openedSpace != nil {
+      ToolbarItem(placement: .navigation) {
+        Button {
+          model.openedSpace = nil
+          showingChat = false
+        } label: {
+          Image(systemName: "chevron.left").frame(width: 20, height: 20)
+        }.nativeControl(circular: true)
+          .accessibilityLabel("All spaces").help("All spaces")
+          .keyboardShortcut("[", modifiers: .command)
+          .disabled(model.busy || model.creatingSpace)
+      }.customGlassToolbarItem()
+    }
+    if model.openedSpace != nil {
+      ToolbarItem(id: "space-actions", placement: .primaryAction) {
+        GlassControls {
+          HStack(spacing: 8) {
+            Button {
+              model.startSpaceChat()
+            } label: {
+              Image(systemName: "square.and.pencil").frame(width: 20, height: 20)
+            }.nativeControl(circular: true).accessibilityLabel("New chat").help("New chat (⌘N)")
+              .disabled(chatActionsDisabled)
+            Button {
+              showHistory = true
+            } label: {
+              Image(systemName: "clock").frame(width: 20, height: 20)
+            }.nativeControl(circular: true).accessibilityLabel("Chat history").help("Chat history")
+              .keyboardShortcut("h", modifiers: [.command, .shift])
+              .disabled(chatActionsDisabled)
+            Divider().frame(height: 18).padding(.horizontal, 4)
+            Button {
+              sharingSpace = model.openedSpace
+            } label: {
+              Image(systemName: "square.and.arrow.up").frame(width: 20, height: 20)
+            }.nativeControl(circular: true).accessibilityLabel("Share space").help("Share space")
+              .disabled(runtime.loading || !runtime.accountConnected)
+          }.labelStyle(.titleAndIcon).fixedSize().controlSize(.large)
+        }.padding(.vertical, 4)
+      }.customGlassToolbarItem()
+    }
+    if model.openedSpace == nil
+      && (runtime.accountConnected || RuntimeLocation.deployment == .local)
+    {
+      ToolbarItem(id: "glass-space-search", placement: .primaryAction) {
+        GlassToolbarSearch(text: $spaceSearch, focusRequest: searchFocusRequest)
+          .frame(width: 240)
+      }.customGlassToolbarItem()
+    }
+    ToolbarItem(id: "more-options", placement: .primaryAction) {
+      moreMenu
+    }.customGlassToolbarItem()
+  }
+
+  private var moreMenu: some View {
+    Menu {
+      Button("Refresh", systemImage: "arrow.clockwise") {
+        if model.openedSpace == nil {
+          Task { await runtime.refreshSpaces() }
         } else {
-          Label("New chat", systemImage: "square.and.pencil").frame(height: 20)
+          runtime.load()
         }
-      }.nativeControl(circular: compact).help("New chat").accessibilityLabel("New chat")
-      Button {
-        showHistory = true
-      } label: {
-        if compact {
-          Image(systemName: "clock").frame(width: 20, height: 20)
-        } else {
-          Label("Chat history", systemImage: "clock").frame(height: 20)
+      }.keyboardShortcut("r", modifiers: .command)
+        .disabled(runtime.loading || runtime.catalogLoading || runtime.signInPending)
+      if let space = model.openedSpace {
+        Button("Open in browser", systemImage: "arrow.up.right.square") {
+          NSWorkspace.shared.open(space.url)
         }
-      }.nativeControl(circular: compact).help("Chat history").accessibilityLabel("Chat history")
-    }.labelStyle(.titleAndIcon)
-      .disabled(model.busy || model.connecting || model.creatingSpace || model.loginPending)
+      }
+      Divider()
+      accountActions
+    } label: {
+      Image(systemName: "ellipsis").frame(width: 20, height: 20).hidden()
+    }.menuStyle(.borderlessButton).menuIndicator(.hidden)
+      .frame(width: 34, height: 34).controlSurface(radius: 17)
+      .overlay {
+        // Native menus reserve indicator space even when the indicator is hidden.
+        Image(systemName: "ellipsis")
+          .allowsHitTesting(false).accessibilityHidden(true)
+      }.fixedSize()
+      .accessibilityLabel("More options").help("Refresh, account and model settings")
   }
 
   private var chat: some View {
@@ -255,21 +334,26 @@ struct ContentView: View {
   }
 
   private var chatHeader: some View {
-    VStack(spacing: 0) {
-      HStack(spacing: 10) {
-        Image(systemName: "bubble.left.and.bubble.right").font(.title2).foregroundStyle(
-          .secondary)
-        VStack(alignment: .leading, spacing: 3) {
-          Text("Chat").font(.headline)
-          Text(model.connecting ? "Connecting…" : model.modelLabel)
-            .font(.caption).foregroundStyle(.secondary)
-        }
-        Spacer()
+    GlassControls {
+      HStack(spacing: 12) {
+        Label("Chat", systemImage: "bubble.left.and.bubble.right").font(.headline)
+        Spacer(minLength: 8)
+        Button {
+          showProviderSettings = true
+        } label: {
+          HStack(spacing: 6) {
+            Text(model.connecting ? "Connecting…" : model.modelLabel).lineLimit(1)
+            Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
+          }.frame(height: 20)
+        }.nativeControl().help("Model settings: \(model.modelLabel)")
+          .accessibilityLabel("Model settings: \(model.modelLabel)")
+          .disabled(accountActionsDisabled)
         if !model.connected {
-          Button("Reconnect") { Task { await model.connect() } }.disabled(model.connecting)
+          Button("Reconnect", systemImage: "arrow.clockwise") { Task { await model.connect() } }
+            .labelStyle(.iconOnly).nativeControl(circular: true)
+            .help("Reconnect").disabled(model.connecting)
         }
-      }.padding(.horizontal, 16).padding(.vertical, 12)
-
+      }.padding(.horizontal, 8).padding(.vertical, 4)
     }
   }
 
@@ -285,7 +369,9 @@ struct ContentView: View {
           } label: {
             Image(systemName: "xmark")
           }.buttonStyle(.plain).accessibilityLabel("Dismiss error")
-        }.padding(12).background(Color.orange.opacity(0.12)).padding(.horizontal, 16).padding(
+        }.padding(12).background(
+          Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12)
+        ).padding(.horizontal, 16).padding(
           .bottom, 8)
       }
 
@@ -299,16 +385,19 @@ struct ContentView: View {
           } else {
             Button("Sign in with ChatGPT") { Task { await model.signIn() } }.nativeControl(
               prominent: true)
-            Text("Tonk Town keeps its own sign-in on this Mac.").font(.caption).foregroundStyle(
+            Text("Tonk keeps its own sign-in on this Mac.").font(.caption).foregroundStyle(
               .secondary)
           }
         }.frame(maxWidth: .infinity).padding(20)
       } else {
         HStack(alignment: .bottom, spacing: 10) {
-          TextField("Message", text: Binding(get: { draft }, set: { draft = $0 }), axis: .vertical)
-            .textFieldStyle(.plain).lineLimit(1...8).focused($composing)
-            .onSubmit { submit() }.disabled(!model.canSend)
-            .accessibilityLabel("Message")
+          TextField(
+            "Message this space…", text: Binding(get: { draft }, set: { draft = $0 }),
+            axis: .vertical
+          )
+          .textFieldStyle(.plain).lineLimit(1...8).focused($composing)
+          .onSubmit { submit() }.disabled(!model.canSend)
+          .accessibilityLabel("Message")
           if model.busy {
             Button {
               Task { await model.stopTurn() }
@@ -335,11 +424,6 @@ struct ContentView: View {
       RuntimeView(model: runtime)
         .allowsHitTesting(runtime.selectedSpace != nil)
         .accessibilityHidden(runtime.selectedSpace == nil)
-      if runtime.selectedSpace == nil {
-        SpacePickerView(runtime: runtime) { space in
-          Task { if await model.enterSpace(space) { runtime.openSpace(space) } }
-        }
-      }
       if let error = runtime.error {
         ContentUnavailableView {
           Label("Couldn’t open Tonk", systemImage: "network")
@@ -351,90 +435,14 @@ struct ContentView: View {
       }
     }
     .background(.background)
-    .safeAreaInset(edge: .top, spacing: 0) {
-      VStack(spacing: 12) {
-        HStack(spacing: 12) {
-          if runtime.selectedSpace != nil {
-            Button {
-              model.openedSpace = nil
-              showingChat = false
-            } label: {
-              Image(systemName: "chevron.left").frame(width: 20, height: 20)
-            }.nativeControl(circular: true).help("All spaces").accessibilityLabel("All spaces")
-              .disabled(model.busy || model.creatingSpace)
-          }
-          VStack(alignment: .leading, spacing: 3) {
-            Text(runtime.selectedSpace?.title ?? "Spaces")
-              .font(.headline).lineLimit(1)
-              .help(runtime.selectedSpace?.title ?? "Spaces")
-            if runtime.selectedSpace != nil {
-              Text("Ask questions and work with an agent in this space")
-                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-          }.frame(minWidth: 80, alignment: .leading)
-          Spacer(minLength: 0)
-          if runtime.selectedSpace != nil {
-            ViewThatFits(in: .horizontal) {
-              spaceChatActions(compact: false).fixedSize()
-              spaceChatActions(compact: true).fixedSize()
-            }
-          }
-          if let space = runtime.selectedSpace {
-            Button {
-              sharingSpace = space
-            } label: {
-              Image(systemName: "square.and.arrow.up").frame(width: 20, height: 20)
-            }.nativeControl(circular: true).help("Share space").accessibilityLabel("Share space")
-              .disabled(runtime.loading || !runtime.accountConnected)
-          }
-          if runtime.loading { ProgressView().controlSize(.small) }
-          Menu {
-            Button(showingChat ? "Hide chat" : "Show chat", systemImage: "sidebar.left") {
-              showingChat.toggle()
-            }.keyboardShortcut("0", modifiers: [.command, .option])
-            Divider()
-            Button("Refresh", systemImage: "arrow.clockwise") {
-              if runtime.selectedSpace == nil {
-                Task { await runtime.refreshSpaces() }
-              } else {
-                runtime.load()
-              }
-            }.disabled(runtime.signInPending)
-            Button("Open in browser", systemImage: "arrow.up.right.square") {
-              NSWorkspace.shared.open(runtime.selectedSpace?.url ?? RuntimeLocation.home)
-            }
-            if model.openedSpace != nil {
-              Divider()
-              accountActions
-            }
-          } label: {
-            Image(systemName: "ellipsis").frame(width: 20, height: 20)
-          }
-          .menuStyle(.borderlessButton).menuIndicator(.hidden)
-          .frame(width: 34, height: 34).controlSurface(radius: 17).fixedSize()
-          .accessibilityLabel("Space options").help("Space options")
-        }
-        if runtime.signInPending {
-          HStack {
-            ProgressView().controlSize(.small)
-            Text(
-              runtime.attachingAccount
-                ? "Connecting your account…" : "Finish signing in in your browser"
-            )
-            .font(.callout)
-            Spacer(minLength: 0)
-            Button("Cancel") { runtime.cancelSignIn() }.disabled(runtime.attachingAccount)
-          }
-        } else if !runtime.accountConnected && RuntimeLocation.deployment != .local {
-          HStack {
-            if let message = runtime.accountMessage {
-              Text(message).font(.caption).textSelection(.enabled)
-            }
-            Spacer(minLength: 0)
-            Button("Sign in to Tonk") { Task { await runtime.signIn() } }.disabled(runtime.loading)
-          }
-        }
-      }.controlSize(.large).padding(.horizontal, 24).padding(.vertical, 16)
+    .overlay(alignment: .top) {
+      if runtime.loading {
+        HStack(spacing: 8) {
+          ProgressView().controlSize(.small)
+          Text("Loading space…").font(.callout)
+        }.padding(.horizontal, 16).padding(.vertical, 10).controlSurface()
+          .padding(16).allowsHitTesting(false)
+      }
     }
   }
 

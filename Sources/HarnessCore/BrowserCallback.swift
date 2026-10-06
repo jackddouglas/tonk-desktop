@@ -127,7 +127,7 @@ public final class BrowserCallback {
         "200 OK",
         body: """
           <!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">
-          <title>Tonk Town</title><p id="status">Returning to Tonk Town…</p>
+          <title>Tonk</title><p id="status">Returning to Tonk…</p>
           <script>
           const fields = new URLSearchParams(location.hash.slice(1));
           history.replaceState(null, '', '/');
@@ -141,7 +141,7 @@ public final class BrowserCallback {
             const nonce = document.createElement('input'); nonce.type = 'hidden';
             nonce.name = 'state'; nonce.value = '\(nonce)'; form.appendChild(nonce);
             document.body.appendChild(form); form.submit();
-          } else { document.querySelector('#status').textContent = 'No authorization received. Return to Tonk Town to try again.'; }
+          } else { document.querySelector('#status').textContent = 'No authorization received. Return to Tonk to try again.'; }
           </script>
           """, on: connection, id: id)
       return
@@ -170,7 +170,7 @@ public final class BrowserCallback {
     send(
       "200 OK",
       body:
-        "<!doctype html><title>Tonk Town</title><p>Authorization received. Return to Tonk Town to finish connecting.</p>",
+        "<!doctype html><title>Tonk</title><p>Authorization received. Return to Tonk to finish connecting.</p>",
       on: connection, id: id
     ) {
       self.finish(result)

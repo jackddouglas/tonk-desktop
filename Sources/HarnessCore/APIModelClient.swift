@@ -75,7 +75,7 @@ public enum APIModelWire {
       body["system"] = .string(instructions)
       body["max_tokens"] = .number(8192)
     }
-    if connection.toolsEnabled && !tools.isEmpty {
+    if !tools.isEmpty {
       body["tools"] = .array(
         tools.map { tool in
           if anthropic {
@@ -92,6 +92,9 @@ public enum APIModelWire {
             ]),
           ])
         })
+    }
+    if connection.provider == .openRouter && !tools.isEmpty {
+      body["provider"] = .object(["require_parameters": .bool(true)])
     }
     request.httpBody = try JSONEncoder().encode(JSONValue.object(body))
     guard request.httpBody!.count <= 16 * 1024 * 1024 else {
@@ -244,7 +247,7 @@ public final class APIModelClient {
       for call in reply.calls {
         try Task.checkCancellation()
         let result: JSONValue
-        if connection.toolsEnabled && allowed.contains(call.name) {
+        if allowed.contains(call.name) {
           result = await execute(call)
         } else {
           result = SpaceTools.response("This tool is unavailable.", success: false)
@@ -274,7 +277,7 @@ public final class APIModelClient {
     guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
       let status = (response as? HTTPURLResponse)?.statusCode ?? 0
       throw HarnessError.message(
-        "Model request failed (HTTP \(status)). Check the endpoint, key, model ID, and tool support. The request was not retried."
+        "Model request failed (HTTP \(status)). Check the endpoint, key, and model ID. Tonk requires a model and endpoint that support tool calling. The request was not retried."
       )
     }
     var decoder = APIStreamDecoder(anthropic: anthropic)

@@ -1,4 +1,4 @@
-# Tonk Town
+# Tonk
 
 A native Mac workspace for Tonk spaces and chat.
 SwiftUI owns the space grid, conversations, and chat history. ChatGPT uses Codex app-server;
@@ -14,7 +14,7 @@ Codex CLI 0.159.3. Markdown rendering and native drag selection use Textual; Swi
 
 ```sh
 bash scripts/build-app.sh
-open ".build/Tonk Town.app"
+open ".build/Tonk.app"
 ```
 
 Local builds use the single available **Apple Development** signing identity.
@@ -31,10 +31,10 @@ that enables Tonk's service-worker domain in the embedded web view.
 1. On first launch, **Sign in to Tonk** opens your browser to use your existing
    Tonk passkey. The app accepts the device grant and opens your space grid.
    If already signed in, the app opens directly to the grid.
-2. Open a space to see its content filling the window. Labeled **New chat** and
-   **Chat history** controls are in the space header. **New chat** opens a fresh
+2. Open a space to see its content filling the window. **New chat**,
+   **Chat history**, and **Show chat** controls are in the glass window toolbar. **New chat** opens a fresh
    chat alongside it; **Show chat** reveals the most recent conversation.
-3. Use **Model provider** in the toolbar to choose ChatGPT subscription sign-in,
+3. Use **Settings…** in the Tonk menu to choose ChatGPT subscription sign-in,
    an API-key provider, or a local model. ChatGPT sign-in remains a separate step.
 4. **New chat** starts a separate conversation in the current space. **Chat history**
    lists only that space's conversations and offers **New chat**. Chat history is
@@ -55,7 +55,8 @@ executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 
 ## Model providers
 
-Open **Model provider** in the toolbar (or press **Command-comma**).
+Open **Settings…** in the Tonk menu (or press **Command-comma**).
+The model pill above chat and **More → Model settings…** open the same sheet.
 Keep ChatGPT subscription sign-in, or choose:
 
 - **OpenAI API**: OpenAI API key and model ID, distinct from ChatGPT subscription sign-in.
@@ -75,10 +76,9 @@ it. Changing endpoint clears an unsaved key entry. Remote endpoints require HTTP
 HTTP is allowed only on loopback. Redirects are rejected rather than forwarding keys.
 
 The chat header shows the active model ID for both ChatGPT and API providers.
-ChatGPT settings list models from the live app-server catalog; **Saved models**
-lets you switch among remembered provider/model configurations without re-entering
-keys. API models stream Markdown replies and use the same pinned Tonk tools as ChatGPT.
-Disable **Enable Tonk tools** for a model that only supports text. Model IDs are
+ChatGPT settings list models from the live app-server catalog. API models stream
+Markdown replies and use the same pinned Tonk tools as ChatGPT.
+Models and their endpoints must support tool calling; text-only mode is not supported. Model IDs are
 entered explicitly, since availability depends on the provider and account.
 This first adapter supports text and function calling, not vision, provider-specific
 reasoning modes, or model discovery. Compatibility with every model routed through
@@ -185,13 +185,13 @@ the installed CLI. Reference: [Codex app-server](https://learn.chatgpt.com/docs/
 
 ## Isolated staging experiment
 
-Quit Tonk Town, then launch the signed app against staging:
+Quit Tonk, then launch the signed app against staging:
 
 ```sh
-open '.build/Tonk Town.app' --args --staging
+open '.build/Tonk.app' --args --staging
 ```
 
-The window reads “Tonk Town — Staging”. It uses `staging.tonk.xyz`, a separate
+The window reads “Tonk — Staging”. It uses `staging.tonk.xyz`, a separate
 persistent WebKit store, and `~/Library/Application Support/Tonk Town Staging`
 for conversations, agent sign-in, and CLI replicas. Sign in directly to a
 staging account and create a disposable staging space. Production grants are
@@ -280,8 +280,25 @@ zero matches, and unchanged revisions with zero committed claims.
 
 ### Signing out
 
-The **Account** menu in the title bar offers **Sign out of Tonk** and, when the
+The **More** menu in the title bar offers **Sign out of Tonk** and, when the
 ChatGPT provider is signed in, **Sign out of ChatGPT**. These are separate accounts.
 Tonk sign-out unlinks the app’s device through the existing account endpoint,
 closes the space, and returns to onboarding. Local chat files and saved model keys
 are retained; this is not account deletion. The external MCP bridge is stopped.
+
+## Liquid Glass workspace
+
+On macOS 26 and later, the window uses native Liquid Glass controls, with a
+shared glass container for related actions, a floating glass composer, and
+matching search fields. Earlier macOS versions use the existing material and
+bordered-control fallbacks. Reduce Transparency uses an opaque custom surface.
+
+The toolbar contains All spaces, Show/Hide chat, New chat, Chat history, Share,
+and More. More contains Refresh, Open in browser, model settings and sign-out.
+The current space title stays in the title bar.
+
+Keyboard commands: Command-[ returns to spaces, Option-Command-0 toggles chat,
+Command-N starts a chat, Shift-Command-H opens history, Command-F focuses the
+visible search, Command-R refreshes, and Command-comma opens settings. In search,
+Escape clears a query; with an empty query, Escape can dismiss the sheet.
+

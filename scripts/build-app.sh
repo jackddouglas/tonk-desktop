@@ -18,7 +18,7 @@ if [[ -z "$identity" ]]; then
     identity=${development_ids[0]}
 fi
 swift build
-app="$PWD/.build/Tonk Town.app"
+app="$PWD/.build/Tonk.app"
 mkdir -p "$app/Contents/MacOS"
 mkdir -p "$app/Contents/Resources"
 cp .build/debug/TonkTown "$app/Contents/MacOS/TonkTown"

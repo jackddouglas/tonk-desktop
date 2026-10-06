@@ -3,30 +3,10 @@ import SwiftUI
 
 struct SpacePickerView: View {
   @ObservedObject var runtime: RuntimeModel
+  @Binding var search: String
   var onOpen: (TonkSpace) -> Void
-  @State private var search = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      HStack {
-        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-        TextField("Find a space", text: $search).textFieldStyle(.plain)
-          .accessibilityLabel("Find a space")
-        if !search.isEmpty {
-          Button {
-            search = ""
-          } label: {
-            Image(systemName: "xmark.circle.fill")
-          }
-          .buttonStyle(.plain).accessibilityLabel("Clear search")
-        }
-      }.padding(12)
-        .controlSurface(radius: 20)
-        .overlay {
-          RoundedRectangle(cornerRadius: 20)
-            .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
-            .allowsHitTesting(false)
-        }
-        .padding(.horizontal, 20).padding(.top, 8)
       if let error = runtime.catalogError {
         VStack(alignment: .leading, spacing: 8) {
           Text("Couldn’t load spaces: \(error)").font(.callout).textSelection(.enabled)
@@ -42,13 +22,16 @@ struct SpacePickerView: View {
       } else if runtime.spaces.isEmpty {
         ContentUnavailableView(
           "No spaces yet", systemImage: "square.grid.2x2",
-          description: Text("Sign in to Tonk to load your spaces, or create one in your browser."))
+          description: Text("Create a space in Tonk, then refresh to see it here."))
       } else {
         let matching = runtime.spaces.filter {
           search.isEmpty || $0.title.localizedCaseInsensitiveContains(search)
         }
         if matching.isEmpty {
-          ContentUnavailableView.search(text: search)
+          VStack(spacing: 12) {
+            ContentUnavailableView.search(text: search)
+            Button("Clear search") { search = "" }.nativeControl()
+          }
         } else {
           ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16)], spacing: 16) {
@@ -56,13 +39,13 @@ struct SpacePickerView: View {
                 Button {
                   onOpen(space)
                 } label: {
-                  VStack(alignment: .leading, spacing: 20) {
+                  VStack(alignment: .leading, spacing: 16) {
                     Image(systemName: "square.grid.2x2").font(.title).foregroundStyle(.secondary)
                     Text(space.title).font(.headline).lineLimit(2).help(space.title)
                     HStack {
-                      Text("Open space").font(.caption).foregroundStyle(.secondary)
+                      Text("Open space").font(.callout).foregroundStyle(.secondary)
                       Spacer()
-                      Image(systemName: "arrow.up.right").font(.caption)
+                      Image(systemName: "chevron.right").font(.caption)
                     }
                   }
                   .padding(20).frame(maxWidth: .infinity, minHeight: 135, alignment: .leading)
@@ -74,14 +57,37 @@ struct SpacePickerView: View {
                       Color(nsColor: .separatorColor), lineWidth: 0.5)
                   }
                   .contentShape(RoundedRectangle(cornerRadius: 18))
-                }.buttonStyle(.plain).accessibilityLabel(
+                }.buttonStyle(SpaceCardStyle()).accessibilityLabel(
                   "Open \(space.title), \(space.id.suffix(8))")
               }
-            }.padding(20)
+            }.padding(24)
           }
 
         }
       }
     }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.background)
+
+  }
+}
+
+private struct SpaceCardStyle: ButtonStyle {
+  @Environment(\.isEnabled) private var enabled
+  @Environment(\.isFocused) private var focused
+  @State private var hovered = false
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .overlay {
+        RoundedRectangle(cornerRadius: 18)
+          .fill(Color.primary.opacity(configuration.isPressed ? 0.08 : (hovered ? 0.035 : 0)))
+          .allowsHitTesting(false)
+      }
+      .overlay {
+        RoundedRectangle(cornerRadius: 18)
+          .strokeBorder(focused ? Color.accentColor : .clear, lineWidth: 2)
+          .allowsHitTesting(false)
+      }
+      .opacity(enabled ? 1 : 0.5)
+      .onHover { hovered = $0 }
   }
 }

@@ -82,11 +82,7 @@ extension HarnessModel {
     persist()
     let configuration = connection
     let tools = SpaceTools.agentDefinitions(includeCLI: RuntimeLocation.deployment != .local)
-    let instructions =
-      saved.profile.instructions + "\n\n" + spaceInstructions
-      + (configuration.toolsEnabled
-        ? ""
-        : "\nTools are disabled for this model. Answer in text; do not claim to inspect or change spaces.")
+    let instructions = saved.profile.instructions + "\n\n" + spaceInstructions
     apiTask = Task { [weak self] in
       guard let self else { return }
       defer {

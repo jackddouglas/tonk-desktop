@@ -21,19 +21,7 @@ struct ChatHistoryView: View {
       Text("Chats in \(space?.title ?? "this space")")
         .font(.title2.weight(.semibold))
       if !allSessions.isEmpty {
-        HStack {
-          Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-          TextField("Find a chat", text: $search).textFieldStyle(.plain)
-          if !search.isEmpty {
-            Button("Clear search", systemImage: "xmark.circle.fill") { search = "" }
-              .labelStyle(.iconOnly).buttonStyle(.plain)
-          }
-        }.padding(12).controlSurface(radius: 20)
-          .overlay {
-            RoundedRectangle(cornerRadius: 20)
-              .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
-              .allowsHitTesting(false)
-          }
+        GlassSearchField(title: "Find a chat", text: $search)
       }
       Group {
         if sessions.isEmpty {
@@ -57,7 +45,7 @@ struct ChatHistoryView: View {
               onOpen(session)
             } label: {
               VStack(alignment: .leading, spacing: 6) {
-                Text(session.title).font(.headline).lineLimit(2)
+                Text(session.title).font(.headline).lineLimit(2).help(session.title)
                 HStack {
                   Text(
                     session.conversation.resolvedModel ?? session.connection?.model
@@ -67,6 +55,7 @@ struct ChatHistoryView: View {
                 }.font(.caption).foregroundStyle(.secondary)
               }.padding(.vertical, 6).contentShape(Rectangle())
             }.buttonStyle(.plain)
+              .disabled(model.busy || model.connecting || model.creatingSpace || model.loginPending)
           }.listStyle(.inset)
         }
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -76,10 +65,11 @@ struct ChatHistoryView: View {
           model.startSpaceChat()
           dismiss()
         }
+        .disabled(model.busy || model.connecting || model.creatingSpace || model.loginPending)
         Spacer()
         Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
       }
     }.padding(24).frame(width: 520, height: 440, alignment: .topLeading).nativeControl()
-      .disabled(model.busy || model.connecting || model.creatingSpace || model.loginPending)
+
   }
 }

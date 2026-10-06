@@ -49,3 +49,29 @@ extension View {
     modifier(NativeControlStyle(prominent: prominent, circular: circular))
   }
 }
+
+/// Related glass controls share a sampling container, without stacking glass surfaces.
+struct GlassControls<Content: View>: View {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @ViewBuilder var content: () -> Content
+
+  @ViewBuilder var body: some View {
+    if #available(macOS 26.0, *), !reduceTransparency {
+      GlassEffectContainer(spacing: 8) { content() }
+    } else {
+      content()
+    }
+  }
+}
+
+extension ToolbarContent {
+  /// Custom glass controls already supply their own material.
+  @ToolbarContentBuilder
+  func customGlassToolbarItem() -> some ToolbarContent {
+    if #available(macOS 26.0, *) {
+      sharedBackgroundVisibility(.hidden)
+    } else {
+      self
+    }
+  }
+}
