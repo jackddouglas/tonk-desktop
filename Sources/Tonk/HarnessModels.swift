@@ -31,7 +31,9 @@ extension HarnessModel {
   }
 
   func refreshSubscriptionModels() async {
-    guard provider == .chatGPT, connected else { return }
+    guard provider == .chatGPT, connected, signedIn, !subscriptionModelsLoading else { return }
+    subscriptionModelsLoading = true
+    defer { subscriptionModelsLoading = false }
     do {
       var models: [SubscriptionModel] = []
       var cursor: String?

@@ -66,6 +66,56 @@ public final class ClaudeCodeClient {
     }
   }
 
+  public func logout(workspace: URL) async throws {
+    let result = try await run(arguments: ["auth", "logout"], workspace: workspace, timeout: 20)
+    guard result.status == 0 else {
+      throw HarnessError.message("Claude sign-out did not complete. Try again.")
+    }
+  }
+
+  public func models(workspace: URL) async throws -> [ClaudeModel] {
+    let requestID = UUID().uuidString
+    let request = JSONValue.object([
+      "type": .string("control_request"), "request_id": .string(requestID),
+      "request": .object(["subtype": .string("initialize")]),
+    ])
+    var input = try JSONEncoder().encode(request)
+    input.append(10)
+    let result = try await run(
+      arguments: [
+        "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+        "--tools", "", "--disable-slash-commands", "--strict-mcp-config", "--mcp-config",
+        "{\"mcpServers\":{}}", "--setting-sources", "", "--settings", "{\"disableAllHooks\":true}",
+      ], workspace: workspace, input: input, timeout: 20)
+    guard result.status == 0 else {
+      throw HarnessError.message("Could not load Claude models. Reconnect to try again.")
+    }
+    var framer = JSONLines()
+    return try Self.decodeModels(framer.append(result.data), requestID: requestID)
+  }
+
+  public static func decodeModels(_ events: [JSONValue], requestID: String) throws -> [ClaudeModel]
+  {
+    guard
+      let event = events.first(where: {
+        $0["type"].string == "control_response" && $0["response"]["request_id"].string == requestID
+      }), event["response"]["subtype"].string == "success",
+      case .array(let rows) = event["response"]["response"]["models"]
+    else {
+      throw HarnessError.message(
+        "Claude Code did not return a model list. Update Claude Code and reconnect.")
+    }
+    var models: [ClaudeModel] = []
+    for row in rows {
+      guard let id = row["value"].string, !id.isEmpty,
+        let name = row["displayName"].string, !name.isEmpty,
+        !models.contains(where: { $0.id == id })
+      else { continue }
+      models.append(ClaudeModel(id: id, name: name, description: row["description"].string ?? ""))
+    }
+    return models
+  }
+
   public static func arguments(
     session: String, resume: Bool, model: String, mcp: String, instructions: String
   ) -> [String] {
@@ -181,6 +231,12 @@ public final class ClaudeCodeClient {
     } while true
     return (child.terminationStatus, collected)
   }
+}
+
+public struct ClaudeModel: Identifiable, Equatable, Sendable {
+  public let id: String
+  public let name: String
+  public let description: String
 }
 
 public struct ClaudeCodeStream {

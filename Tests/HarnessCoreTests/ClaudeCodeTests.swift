@@ -4,6 +4,47 @@ import XCTest
 
 final class ClaudeCodeTests: XCTestCase {
   @MainActor
+  func testInstalledClaudeModelDiscoveryWithoutPrompt() async throws {
+    guard ProcessInfo.processInfo.environment["TONK_TEST_CLAUDE_DISCOVERY"] == "1" else {
+      throw XCTSkip("Set TONK_TEST_CLAUDE_DISCOVERY=1 to probe the installed CLI")
+    }
+    let client = ClaudeCodeClient()
+    try await client.discover()
+    let workspace = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer {
+      client.stop()
+      try? FileManager.default.removeItem(at: workspace)
+    }
+    let models = try await client.models(workspace: workspace)
+    XCTAssertFalse(models.isEmpty)
+    XCTAssertTrue(models.allSatisfy { !$0.id.isEmpty && !$0.name.isEmpty })
+  }
+
+  @MainActor
+  func testModelDiscoveryCorrelatesResponseAndRejectsMissingCatalog() throws {
+    func event(_ id: String, _ models: [JSONValue]) -> JSONValue {
+      .object([
+        "type": .string("control_response"),
+        "response": .object([
+          "request_id": .string(id), "subtype": .string("success"),
+          "response": .object(["models": .array(models)]),
+        ]),
+      ])
+    }
+    let row: JSONValue = .object([
+      "value": .string("sonnet"), "displayName": .string("Sonnet"),
+      "description": .string("Description"),
+    ])
+    let models = try ClaudeCodeClient.decodeModels(
+      [event("other", []), event("wanted", [row, row, .object([:])])], requestID: "wanted")
+    XCTAssertEqual(models.map(\.id), ["sonnet"])
+    XCTAssertEqual(models.first?.description, "Description")
+    XCTAssertThrowsError(
+      try ClaudeCodeClient.decodeModels([event("other", [row])], requestID: "wanted"))
+    XCTAssertThrowsError(try ClaudeCodeClient.decodeModels([], requestID: "wanted"))
+  }
+
+  @MainActor
   func testLiveClaudeSubscriptionToolAndResume() async throws {
     guard ProcessInfo.processInfo.environment["TONK_TEST_CLAUDE_LIVE"] == "1" else {
       throw XCTSkip("Set TONK_TEST_CLAUDE_LIVE=1 for a live subscription smoke test")

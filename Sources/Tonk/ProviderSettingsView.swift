@@ -10,6 +10,7 @@ struct ProviderSettingsView: View {
   @State private var codexExecutable: String?
   @State private var key = ""
   @State private var saving = false
+  @State private var startedSignIn = false
   @State private var showAdvancedSettings = false
   @State private var error: String?
 
@@ -37,6 +38,7 @@ struct ProviderSettingsView: View {
               Image(systemName: "chevron.down").font(.caption.weight(.semibold))
             }
           }.modifier(SettingsMenuStyle())
+            .disabled(model.loginPending || model.connecting)
         }
         if selected == .chatGPT {
           if model.codexDiscoveryFailed {
@@ -56,41 +58,85 @@ struct ProviderSettingsView: View {
               .lineLimit(2).truncationMode(.middle)
             }
           }
-          if !model.subscriptionModels.isEmpty {
-            HStack {
-              Text("Model")
-              Spacer()
-              Menu {
-                Picker("Model", selection: $connection.model) {
-                  if !model.subscriptionModels.contains(where: { $0.id == connection.model }) {
-                    Text(connection.model.isEmpty ? "Choose a model" : connection.model).tag(
-                      connection.model)
+          if model.provider == .chatGPT && model.signedIn {
+            if model.subscriptionModelsLoading {
+              ProgressView("Loading models…").controlSize(.small)
+            } else {
+              HStack {
+                Text("Model")
+                Spacer()
+                Menu {
+                  Picker("Model", selection: $connection.model) {
+                    Text("Default from ChatGPT").tag("")
+                    if !connection.model.isEmpty
+                      && !model.subscriptionModels.contains(where: { $0.id == connection.model })
+                    {
+                      Text("Unavailable: \(connection.model)").tag(connection.model).disabled(true)
+                    }
+                    ForEach(model.subscriptionModels) { item in Text(item.name).tag(item.id) }
+                  }.pickerStyle(.inline)
+                } label: {
+                  HStack(spacing: 8) {
+                    Text(
+                      connection.model.isEmpty
+                        ? "Default from ChatGPT"
+                        : model.subscriptionModels.first(where: { $0.id == connection.model })?.name
+                          ?? "Unavailable: \(connection.model)")
+                    Image(systemName: "chevron.down").font(.caption.weight(.semibold))
                   }
-                  ForEach(model.subscriptionModels) { item in Text(item.name).tag(item.id) }
-                }.pickerStyle(.inline)
-              } label: {
-                HStack(spacing: 8) {
-                  Text(
-                    model.subscriptionModels.first(where: { $0.id == connection.model })?.name
-                      ?? (connection.model.isEmpty ? "Choose a model" : connection.model))
-                  Image(systemName: "chevron.down").font(.caption.weight(.semibold))
-                }
-              }.modifier(SettingsMenuStyle())
+                }.modifier(SettingsMenuStyle())
+              }
+              if let error = model.modelCatalogError {
+                Text(error).font(.caption).foregroundStyle(.secondary)
+              }
             }
           } else {
-            SettingsTextField(
-              title: "Model ID", text: $connection.model, prompt: "Default from ChatGPT")
-          }
-          if let error = model.modelCatalogError {
-            Text(error).font(.caption).foregroundStyle(.secondary)
+            subscriptionSignIn
           }
         } else if selected == .claude {
-          Text("Uses your installed Claude Code CLI and its Claude subscription login.")
-            .font(.callout).foregroundStyle(.secondary)
-          SettingsTextField(
-            title: "Model", text: $connection.model, prompt: "Default from Claude Code")
-          Text("Leave blank for the default, or enter a Claude model alias such as sonnet or opus.")
-            .font(.caption).foregroundStyle(.secondary)
+          if model.provider == .claude && model.signedIn {
+            if model.claudeModelsLoading {
+              ProgressView("Loading models…").controlSize(.small)
+            } else {
+              HStack {
+                Text("Model")
+                Spacer()
+                Menu {
+                  Picker(
+                    "Model",
+                    selection: Binding(
+                      get: { connection.model == "default" ? "" : connection.model },
+                      set: { connection.model = $0 }
+                    )
+                  ) {
+                    Text("Default from Claude Code").tag("")
+                    if !connection.model.isEmpty && connection.model != "default"
+                      && !model.claudeModels.contains(where: { $0.id == connection.model })
+                    {
+                      Text("Unavailable: \(connection.model)").tag(connection.model).disabled(true)
+                    }
+                    ForEach(model.claudeModels.filter { $0.id != "default" }) { item in
+                      Text(item.name).tag(item.id).help(item.description)
+                    }
+                  }.pickerStyle(.inline)
+                } label: {
+                  HStack(spacing: 8) {
+                    Text(
+                      connection.model.isEmpty || connection.model == "default"
+                        ? "Default from Claude Code"
+                        : model.claudeModels.first(where: { $0.id == connection.model })?.name
+                          ?? "Unavailable: \(connection.model)")
+                    Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+                  }
+                }.modifier(SettingsMenuStyle())
+              }
+              if let error = model.claudeModelsError {
+                Text(error).font(.caption).foregroundStyle(.secondary)
+              }
+            }
+          } else {
+            subscriptionSignIn
+          }
         } else if selected != .disabled {
           SettingsTextField(
             title: "Model ID", text: $connection.model, prompt: "Enter the provider’s model ID"
@@ -126,6 +172,26 @@ struct ProviderSettingsView: View {
             }.controlSize(.small)
           }
         }
+        if [.chatGPT, .claude].contains(selected), model.provider == selected, model.signedIn {
+          Button("Sign out") {
+            saving = true
+            error = nil
+            Task {
+              defer { saving = false }
+              await model.signOut()
+              error = model.error
+            }
+          }
+          .disabled(
+            model.busy || model.creatingSpace || model.connecting || model.loginPending
+              || model.subscriptionModelsLoading || model.claudeModelsLoading
+          )
+          .help(
+            selected == .claude
+              ? "Also signs out of Claude Code on this Mac." : "Sign out of ChatGPT in Tonk."
+          )
+          .frame(maxWidth: .infinity, alignment: .trailing)
+        }
       }.controlSize(.regular)
       Divider()
       Text(
@@ -155,6 +221,7 @@ struct ProviderSettingsView: View {
             } catch { self.error = error.localizedDescription }
           }
         }.nativeControl(prominent: true).keyboardShortcut(.defaultAction)
+          .disabled(model.loginPending || model.connecting)
       }.controlSize(.regular)
     }
     .padding(24).frame(width: 540).nativeControl().disabled(saving)
@@ -166,8 +233,49 @@ struct ProviderSettingsView: View {
       }
       key = ""
       error = nil
+      startedSignIn = false
+    }
+    .onChange(of: model.error) { _, value in
+      if startedSignIn { error = value }
     }
     .onChange(of: connection.baseURL) { _, _ in key = "" }
+  }
+
+  @ViewBuilder
+  private var subscriptionSignIn: some View {
+    if model.loginPending && model.provider == selected {
+      HStack {
+        HStack(spacing: 8) {
+          ProgressView().controlSize(.small)
+          Text("Continue in your browser")
+            .font(.caption).foregroundStyle(.secondary)
+        }
+        Spacer()
+        Button("Cancel sign-in") { Task { await model.cancelLogin() } }
+      }
+    } else {
+      Button(selected == .claude ? "Sign in with Claude" : "Sign in with ChatGPT") {
+        saving = true
+        startedSignIn = true
+        error = nil
+        Task {
+          defer { saving = false }
+          do {
+            try await model.configureProvider(
+              selected, connection: connection, key: "", codexExecutable: codexExecutable)
+            guard model.connected else {
+              error = model.error ?? "Could not connect. Try signing in again."
+              return
+            }
+            if !model.signedIn { await model.signIn() }
+            error = model.error
+          } catch { self.error = error.localizedDescription }
+        }
+      }
+      .nativeControl(prominent: true)
+      .disabled(model.busy || model.creatingSpace || model.connecting || model.loginPending)
+      .frame(maxWidth: .infinity, alignment: .trailing)
+    }
   }
 
   private func chooseCodexExecutable() {

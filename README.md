@@ -31,7 +31,7 @@ and API keys are stored in macOS Keychain.
 
 For **Claude subscription**, install [Claude Code](https://code.claude.com/docs/en/setup),
 select it in Settings, and use **Sign in with Claude**. Tonk uses the CLI's existing
-subscription login and keeps credentials in Claude Code. Leave Model blank for its
-default, or enter an alias such as `sonnet` or `opus`. `TONK_CLAUDE` can select an
+subscription login and keeps credentials in Claude Code. After sign-in, choose a
+model from the CLI's model list or keep **Default from Claude Code**. `TONK_CLAUDE` can select an
 executable when it isn't discovered automatically. Anthropic API-key access remains
 a separate provider.

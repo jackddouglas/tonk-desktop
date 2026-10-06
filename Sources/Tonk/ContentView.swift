@@ -398,7 +398,7 @@ struct ContentView: View {
       } else if model.connected && !model.signedIn {
         VStack(spacing: 10) {
           if model.loginPending {
-            ProgressView("Finish signing in in your browser")
+            ProgressView("Continue in your browser")
             Button("Cancel sign-in") { Task { await model.cancelLogin() } }
           } else {
             Button(model.provider == .claude ? "Sign in with Claude" : "Sign in with ChatGPT") {

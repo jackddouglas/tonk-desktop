@@ -8,6 +8,7 @@ final class HarnessModel: ObservableObject {
   @Published var showingChat = false
   @Published var openedSpace: TonkSpace?
   @Published var subscriptionModels: [SubscriptionModel] = []
+  @Published var subscriptionModelsLoading = false
   @Published var modelCatalogError: String?
   @Published var connected = false
   @Published var connecting = false
@@ -25,6 +26,9 @@ final class HarnessModel: ObservableObject {
   @Published var toolActivity: [String] = []
   let client = AppServerClient()
   let claudeClient: ClaudeCodeClient
+  @Published var claudeModels: [ClaudeModel] = []
+  @Published var claudeModelsLoading = false
+  @Published var claudeModelsError: String?
   let apiClient: APIModelClient
   var apiTask: Task<Void, Never>?
   var apiKey = ""
@@ -100,6 +104,8 @@ final class HarnessModel: ObservableObject {
     client.stop()
     connected = false
     signedIn = false
+    subscriptionModels = []
+    modelCatalogError = nil
     apiKey = ""
     accountLabel = "Not connected"
     resumed = false
@@ -179,20 +185,33 @@ final class HarnessModel: ObservableObject {
       return
     }
     guard let loginID else { return }
+    self.loginID = nil
+    loginPending = false
+    error = nil
     do {
       _ = try await client.request(
         "account/login/cancel", params: .object(["loginId": .string(loginID)]))
-      self.loginID = nil
-      loginPending = false
     } catch { self.error = error.localizedDescription }
   }
 
   func signOut() async {
-    guard !busy, !creatingSpace else { return }
+    guard [.chatGPT, .claude].contains(provider), connected,
+      !busy, !creatingSpace, !connecting, !loginPending,
+      !subscriptionModelsLoading, !claudeModelsLoading
+    else { return }
+    error = nil
     do {
-      _ = try await client.request("account/logout")
+      if provider == .claude {
+        try await claudeClient.logout(workspace: claudeWorkspace)
+      } else {
+        _ = try await client.request("account/logout")
+      }
       signedIn = false
       accountLabel = "Not signed in"
+      subscriptionModels = []
+      modelCatalogError = nil
+      claudeModels = []
+      claudeModelsError = nil
       resumed = false
     } catch { self.error = error.localizedDescription }
   }
@@ -332,6 +351,7 @@ final class HarnessModel: ObservableObject {
 
   private func receive(_ method: String, _ params: JSONValue) {
     if method == "account/login/completed" {
+      guard loginPending, params["loginId"].string == loginID else { return }
       loginPending = false
       loginID = nil
       if params["success"].bool != true {

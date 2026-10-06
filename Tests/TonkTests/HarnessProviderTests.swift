@@ -6,6 +6,35 @@ import XCTest
 
 final class HarnessProviderTests: XCTestCase {
   @MainActor
+  func testLateLoginCompletionDoesNotShowCancellationError() {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let model = HarnessModel(directory: directory)
+    model.loginPending = false
+    model.client.onNotification?(
+      "account/login/completed",
+      .object([
+        "loginId": .string("cancelled-attempt"),
+        "success": .bool(false),
+        "error": .string("Login server error: Login was not completed"),
+      ]))
+    XCTAssertNil(model.error)
+    XCTAssertFalse(model.loginPending)
+
+    // A late completion must not disturb a newer pending login either.
+    model.loginPending = true
+    model.client.onNotification?(
+      "account/login/completed",
+      .object([
+        "loginId": .string("cancelled-attempt"),
+        "success": .bool(false),
+        "error": .string("Login was not completed"),
+      ]))
+    XCTAssertNil(model.error)
+    XCTAssertTrue(model.loginPending)
+  }
+
+  @MainActor
   func testExecutablePickerRequiresDiscoveryFailureRatherThanConnectionFailure() async throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

@@ -6,12 +6,28 @@ extension HarnessModel {
   var claudeWorkspace: URL { root.appendingPathComponent("ClaudeWorkspace", isDirectory: true) }
 
   func connectClaude() async {
+    claudeModels = []
+    claudeModelsError = nil
     do {
       try await claudeClient.discover()
       signedIn = try await claudeClient.authenticated(workspace: claudeWorkspace)
       connected = true
       accountLabel = signedIn ? "Claude connected" : "Sign in with Claude"
+      if signedIn { await refreshClaudeModels() }
     } catch { self.error = error.localizedDescription }
+  }
+
+  func refreshClaudeModels() async {
+    guard provider == .claude, signedIn, !claudeModelsLoading else { return }
+    claudeModelsLoading = true
+    defer { claudeModelsLoading = false }
+    do {
+      claudeModels = try await claudeClient.models(workspace: claudeWorkspace)
+      claudeModelsError = nil
+    } catch {
+      claudeModels = []
+      claudeModelsError = error.localizedDescription
+    }
   }
 
   func signInClaude() async {
@@ -30,6 +46,7 @@ extension HarnessModel {
         if !signedIn {
           throw HarnessError.message("Sign in with a Claude subscription, then reconnect.")
         }
+        await refreshClaudeModels()
       } catch {
         if !Task.isCancelled { self.error = error.localizedDescription }
       }
