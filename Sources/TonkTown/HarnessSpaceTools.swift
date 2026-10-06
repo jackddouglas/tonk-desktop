@@ -30,6 +30,12 @@ extension HarnessModel {
       The harness connects space tools automatically. Read existing schema first.
       \(cliGuidance)
       When available, prefer tonk_query and tonk_preview for direct local reads and validation.
+      For record questions, use tonk_query with fields for only the required columns,
+      avoiding body/source fields. Use equals for exact saved values. For "me" or a named
+      assignee, query the people schema/records first and resolve the actual person URI;
+      never use a bare name as an Entity or assume the signed-in account identifies a person.
+      If multiple people match, ask the user. Count only complete results and distinguish
+      active statuses from completed/cancelled using the actual stored status values.
       These use the preview's replica without a CLI or network pull. tonk_preview does not
       render proposed changes or return a proposed-state diff. Use tonk_apply with the
       exact revision from preview for authorized writes when the worker supports it.
