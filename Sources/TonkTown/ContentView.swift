@@ -2,6 +2,7 @@ import HarnessCore
 import SwiftUI
 
 struct ContentView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @ObservedObject var model: HarnessModel
   @ObservedObject var runtime: RuntimeModel
@@ -27,9 +28,12 @@ struct ContentView: View {
 
   var body: some View {
     ZStack {
-      HSplitView {
-        if showingChat { chat.frame(minWidth: 340, idealWidth: 400, maxWidth: 560) }
-        workspace.frame(minWidth: 380, maxWidth: .infinity)
+      GeometryReader { geometry in
+        AnimatedSidebar(
+          isVisible: showingChat, reduceMotion: reduceMotion,
+          maximumWidth: geometry.size.width / 2,
+          sidebar: chat, detail: workspace
+        )
       }
       .opacity(model.openedSpace != nil ? 1 : 0)
       .allowsHitTesting(model.openedSpace != nil)
@@ -65,12 +69,14 @@ struct ContentView: View {
       model.openedSpace == nil && (runtime.accountConnected || RuntimeLocation.deployment == .local)
         ? { searchFocusRequest += 1 } : nil
     )
+    .focusedSceneValue(\.refreshContent, refreshDisabled ? nil : refreshContent)
     .navigationTitle(model.openedSpace?.title ?? "Spaces")
     .navigationSubtitle(
       RuntimeLocation.deployment == .production ? "" : RuntimeLocation.deployment.title
     )
     .toolbar { windowToolbar }
-    .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+    .toolbarBackground(Color(nsColor: .textBackgroundColor), for: .windowToolbar)
+    .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
     .disabled(signingOut)
     .alert(
       "Couldn’t sign out",
@@ -113,29 +119,6 @@ struct ContentView: View {
   private var accountActionsDisabled: Bool {
     model.busy || model.creatingSpace || model.connecting || model.loginPending
       || runtime.signInPending || runtime.catalogLoading
-  }
-
-  @ViewBuilder
-  private var accountActions: some View {
-    Button("Model settings…", systemImage: "slider.horizontal.3") { showProviderSettings = true }
-      .disabled(accountActionsDisabled)
-    if model.provider == .chatGPT && model.signedIn {
-      Button("Sign out of ChatGPT") { Task { await model.signOut() } }
-        .disabled(accountActionsDisabled)
-    }
-    if runtime.accountConnected && RuntimeLocation.deployment != .local {
-      Button("Sign out of Tonk") {
-        signingOut = true
-        Task {
-          defer { signingOut = false }
-          do {
-            try await runtime.signOut()
-            model.openedSpace = nil
-            showingChat = false
-          } catch { accountError = error.localizedDescription }
-        }
-      }.disabled(accountActionsDisabled)
-    }
   }
 
   private var chatActionsDisabled: Bool {
@@ -210,33 +193,51 @@ struct ContentView: View {
     }.customGlassToolbarItem()
   }
 
+  private var refreshDisabled: Bool {
+    runtime.loading || runtime.catalogLoading || runtime.signInPending
+  }
+
+  private func refreshContent() {
+    if model.openedSpace == nil { Task { await runtime.refreshSpaces() } } else { runtime.load() }
+  }
+
   private var moreMenu: some View {
-    Menu {
-      Button("Refresh", systemImage: "arrow.clockwise") {
-        if model.openedSpace == nil {
-          Task { await runtime.refreshSpaces() }
-        } else {
-          runtime.load()
-        }
-      }.keyboardShortcut("r", modifiers: .command)
-        .disabled(runtime.loading || runtime.catalogLoading || runtime.signInPending)
+    AnchoredMenuButton {
+      let menu = NSMenu()
+      menu.autoenablesItems = false
+      menu.addAction(
+        "Refresh", symbol: "arrow.clockwise", key: "r",
+        enabled: !refreshDisabled, action: refreshContent)
       if let space = model.openedSpace {
-        Button("Open in browser", systemImage: "arrow.up.right.square") {
+        menu.addAction("Open in browser", symbol: "arrow.up.right.square") {
           NSWorkspace.shared.open(space.url)
         }
       }
-      Divider()
-      accountActions
-    } label: {
-      Image(systemName: "ellipsis").frame(width: 20, height: 20).hidden()
-    }.menuStyle(.borderlessButton).menuIndicator(.hidden)
-      .frame(width: 34, height: 34).controlSurface(radius: 17)
-      .overlay {
-        // Native menus reserve indicator space even when the indicator is hidden.
-        Image(systemName: "ellipsis")
-          .allowsHitTesting(false).accessibilityHidden(true)
-      }.fixedSize()
-      .accessibilityLabel("More options").help("Refresh, account and model settings")
+      menu.addItem(.separator())
+      menu.addAction(
+        "Model settings…", symbol: "slider.horizontal.3",
+        enabled: !accountActionsDisabled
+      ) { showProviderSettings = true }
+      if model.provider == .chatGPT && model.signedIn {
+        menu.addAction("Sign out of ChatGPT", enabled: !accountActionsDisabled) {
+          Task { await model.signOut() }
+        }
+      }
+      if runtime.accountConnected && RuntimeLocation.deployment != .local {
+        menu.addAction("Sign out of Tonk", enabled: !accountActionsDisabled) {
+          signingOut = true
+          Task {
+            defer { signingOut = false }
+            do {
+              try await runtime.signOut()
+              model.openedSpace = nil
+              showingChat = false
+            } catch { accountError = error.localizedDescription }
+          }
+        }
+      }
+      return menu
+    }
   }
 
   private var chat: some View {
