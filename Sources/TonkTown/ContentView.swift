@@ -382,6 +382,9 @@ struct ContentView: View {
             }
           }
           Spacer(minLength: 0)
+          if runtime.selectedSpace != nil {
+            spaceChatActions.fixedSize()
+          }
           if let space = runtime.selectedSpace {
             Button {
               sharingSpace = space
@@ -408,12 +411,6 @@ struct ContentView: View {
           .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
           .frame(width: 32, height: 32).controlSurface(radius: 16).fixedSize()
           .accessibilityLabel("Space options").help("Space options")
-        }
-        if runtime.selectedSpace != nil {
-          HStack {
-            spaceChatActions
-            Spacer(minLength: 0)
-          }
         }
         if runtime.signInPending {
           HStack {
