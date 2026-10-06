@@ -136,6 +136,39 @@ extension RuntimeModel {
     }
   }
 
+  // Detect the installed worker API before routing profile reads or writes.
+  static let accountAPIScript = """
+    let profilePrefix;
+    async function api(path, body) {
+      if (path.startsWith('/api/profile/branch/')) {
+        if (!profilePrefix) {
+          // Older workers keep profiles outside the named-repository namespace.
+          // Probe a read-only route; never retry a transaction to detect the API.
+          const probe = await fetch('/api/profile/repository', {
+            signal: AbortSignal.timeout(60000)
+          });
+          if (probe.status === 404) {
+            profilePrefix = '/api/repository/profile:tonk/branch/';
+          } else if (probe.ok && (probe.headers.get('content-type') || '').includes('json')) {
+            profilePrefix = '/api/profile/branch/';
+          } else {
+            throw new Error('Cannot detect the profile API (HTTP ' + probe.status + ').');
+          }
+        }
+        path = path.replace('/api/profile/branch/', profilePrefix);
+      }
+      const response = await fetch(path, {
+        method: body ? 'POST' : 'GET', headers: {'Content-Type': 'application/json'},
+        body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(60000)
+      });
+      // Do not echo responses or grants into native diagnostics.
+      if (!response.ok) throw new Error(path + ' failed (HTTP ' + response.status + ').');
+      if (!(response.headers.get('content-type') || '').includes('json'))
+        throw new Error('The installed Tonk runtime does not support ' + path + '.');
+      return await response.json();
+    }
+    """
+
   func accountScript(_ script: String, arguments: [String: Any] = [:]) async throws
     -> [String: Any]
   {
@@ -146,19 +179,7 @@ extension RuntimeModel {
       """
       if (location.origin !== runtimeOrigin || !navigator.serviceWorker?.controller)
         throw new Error('The Tonk worker is not ready. Reload and try again.');
-      async function api(path, body) {
-        if (runtimeOrigin === 'http://127.0.0.1:4187' && path.startsWith('/api/profile/branch/'))
-          path = path.replace('/api/profile/branch/', '/api/repository/profile:tonk/branch/');
-        const response = await fetch(path, {
-          method: body ? 'POST' : 'GET', headers: {'Content-Type': 'application/json'},
-          body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(60000)
-        });
-        // Do not echo responses or grants into native diagnostics.
-        if (!response.ok) throw new Error(path + ' failed (HTTP ' + response.status + ').');
-        if (!(response.headers.get('content-type') || '').includes('json'))
-          throw new Error('The installed Tonk runtime does not support ' + path + '.');
-        return await response.json();
-      }
+      \(Self.accountAPIScript)
       \(script)
       """,
       arguments: arguments.merging(["runtimeOrigin": RuntimeLocation.home.absoluteString]) {
