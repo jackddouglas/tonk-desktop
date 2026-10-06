@@ -18,6 +18,7 @@ public struct Conversation: Codable, Equatable, Sendable {
   public var spaceProposal: SpaceProposal?
   public var space: TonkSpace?
   public var threadID: String?
+  public var claudeSessionStarted: Bool?
   public var lastTurnStatus: String?
   public var messages: [ChatMessage] = []
   public init() {}

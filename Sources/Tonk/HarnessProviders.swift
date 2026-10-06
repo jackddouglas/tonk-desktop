@@ -22,7 +22,7 @@ extension HarnessModel {
       _ = try CodexInstallation.validate(codexExecutable)
     }
     let executableChanged = selected == .chatGPT && codexExecutable != saved.codexExecutable
-    if ![.chatGPT, .disabled].contains(selected) {
+    if ![.chatGPT, .claude, .disabled].contains(selected) {
       _ = try next.endpoint()
       let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
       if !trimmedKey.isEmpty { try credentials.write(trimmedKey, for: next) }
@@ -54,6 +54,8 @@ extension HarnessModel {
     saved = updated
     if changed || executableChanged || !connected {
       await connect()
+    } else if selected == .claude {
+      await connectClaude()
     } else if selected != .chatGPT {
       try connectAPI()
     }

@@ -24,6 +24,7 @@ final class HarnessModel: ObservableObject {
   @Published var spaceCreationError: String?
   @Published var toolActivity: [String] = []
   let client = AppServerClient()
+  let claudeClient: ClaudeCodeClient
   let apiClient: APIModelClient
   var apiTask: Task<Void, Never>?
   var apiKey = ""
@@ -36,7 +37,10 @@ final class HarnessModel: ObservableObject {
   private var saveTask: Task<Void, Never>?
   var storageAvailable = true
 
-  init(directory: URL? = nil, apiClient: APIModelClient? = nil) {
+  init(
+    directory: URL? = nil, apiClient: APIModelClient? = nil, claudeClient: ClaudeCodeClient? = nil
+  ) {
+    self.claudeClient = claudeClient ?? ClaudeCodeClient()
     self.apiClient = apiClient ?? APIModelClient()
     let arguments = ProcessInfo.processInfo.arguments
     if let directory {
@@ -92,6 +96,7 @@ final class HarnessModel: ObservableObject {
     codexDiscoveryFailed = false
     defer { connecting = false }
     if storageAvailable { error = nil }
+    claudeClient.stop()
     client.stop()
     connected = false
     signedIn = false
@@ -102,6 +107,10 @@ final class HarnessModel: ObservableObject {
     loginID = nil
     loginPending = false
     turnID = nil
+    if provider == .claude {
+      await connectClaude()
+      return
+    }
     if provider != .chatGPT {
       do { try connectAPI() } catch { self.error = error.localizedDescription }
       return
@@ -133,6 +142,10 @@ final class HarnessModel: ObservableObject {
   }
 
   func signIn() async {
+    if provider == .claude {
+      await signInClaude()
+      return
+    }
     guard connected, !loginPending else { return }
     loginPending = true
     error = nil
@@ -160,6 +173,11 @@ final class HarnessModel: ObservableObject {
   }
 
   func cancelLogin() async {
+    if provider == .claude {
+      apiTask?.cancel()
+      claudeClient.stop()
+      return
+    }
     guard let loginID else { return }
     do {
       _ = try await client.request(
@@ -182,6 +200,10 @@ final class HarnessModel: ObservableObject {
   func send(_ text: String, showsUserMessage: Bool = true) async {
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard canSend, !trimmed.isEmpty else { return }
+    if provider == .claude {
+      sendClaude(trimmed, showsUserMessage: showsUserMessage)
+      return
+    }
     if provider != .chatGPT {
       sendAPI(trimmed, showsUserMessage: showsUserMessage)
       return
@@ -304,6 +326,7 @@ final class HarnessModel: ObservableObject {
     if busy { saved.conversation.lastTurnStatus = "interrupted" }
     persist()
     apiTask?.cancel()
+    claudeClient.stop()
     client.stop()
   }
 

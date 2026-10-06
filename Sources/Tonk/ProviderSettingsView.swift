@@ -84,6 +84,13 @@ struct ProviderSettingsView: View {
           if let error = model.modelCatalogError {
             Text(error).font(.caption).foregroundStyle(.secondary)
           }
+        } else if selected == .claude {
+          Text("Uses your installed Claude Code CLI and its Claude subscription login.")
+            .font(.callout).foregroundStyle(.secondary)
+          SettingsTextField(
+            title: "Model", text: $connection.model, prompt: "Default from Claude Code")
+          Text("Leave blank for the default, or enter a Claude model alias such as sonnet or opus.")
+            .font(.caption).foregroundStyle(.secondary)
         } else if selected != .disabled {
           SettingsTextField(
             title: "Model ID", text: $connection.model, prompt: "Enter the provider’s model ID"

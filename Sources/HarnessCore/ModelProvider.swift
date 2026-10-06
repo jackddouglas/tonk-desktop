@@ -1,7 +1,8 @@
 import Foundation
 
 public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable {
-  case disabled, chatGPT, openAI, anthropic, gemini, openRouter, groq, mistral, ollama, grok, local,
+  case disabled, chatGPT, claude, openAI, anthropic, gemini, openRouter, groq, mistral, ollama,
+    grok, local,
     compatible
   public var id: String { rawValue }
   public var title: String {
@@ -12,6 +13,7 @@ public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable
     case .mistral: "Mistral"
     case .ollama: "Ollama"
     case .chatGPT: "ChatGPT subscription"
+    case .claude: "Claude subscription"
     case .openAI: "OpenAI API"
     case .anthropic: "Anthropic"
     case .openRouter: "OpenRouter"
@@ -22,7 +24,7 @@ public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable
   }
   public var baseURL: String {
     switch self {
-    case .disabled, .chatGPT: ""
+    case .disabled, .chatGPT, .claude: ""
     case .gemini: "https://generativelanguage.googleapis.com/v1beta/openai"
     case .groq: "https://api.groq.com/openai/v1"
     case .mistral: "https://api.mistral.ai/v1"
@@ -36,7 +38,7 @@ public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable
     }
   }
   public var requiresKey: Bool {
-    ![.disabled, .chatGPT, .ollama, .local, .compatible].contains(self)
+    ![.disabled, .chatGPT, .claude, .ollama, .local, .compatible].contains(self)
   }
 }
 
@@ -52,7 +54,7 @@ public struct ModelConnection: Codable, Equatable, Sendable {
     self.model = model
   }
   public func endpoint() throws -> URL {
-    guard ![.disabled, .chatGPT].contains(provider),
+    guard ![.disabled, .chatGPT, .claude].contains(provider),
       !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     else {
       throw HarnessError.message("Enter a model ID from your provider or local server.")

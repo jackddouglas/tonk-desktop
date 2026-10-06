@@ -6,6 +6,7 @@ import Network
 @MainActor
 public final class LocalRuntimeBridge {
   public typealias Handler = @MainActor (String, JSONValue) async throws -> JSONValue
+  private let agentTools: [JSONValue]?
   private let handler: Handler
   private let allowsWrites: Bool
   private let supportsInspection: Bool
@@ -17,10 +18,12 @@ public final class LocalRuntimeBridge {
   private var jobs: [UUID: Task<Void, Never>] = [:]
 
   public init(
-    allowsWrites: Bool = false, supportsInspection: Bool = false, handler: @escaping Handler
+    allowsWrites: Bool = false, supportsInspection: Bool = false, agentTools: [JSONValue]? = nil,
+    handler: @escaping Handler
   ) {
     self.allowsWrites = allowsWrites
     self.supportsInspection = supportsInspection
+    self.agentTools = agentTools
     self.handler = handler
   }
 
@@ -128,6 +131,10 @@ public final class LocalRuntimeBridge {
         connection: connection, id: id)
       return
     }
+    if request.path == "/mcp", let agentTools {
+      respondMCP(request, tools: agentTools, connection: connection, id: id)
+      return
+    }
     if request.path == "/tools" {
       send(
         .object([
@@ -168,6 +175,78 @@ public final class LocalRuntimeBridge {
       }
       guard !Task.isCancelled, connections[id] != nil else { return }
       send(result, connection: connection, id: id)
+    }
+  }
+
+  private func respondMCP(
+    _ request: CallbackRequest, tools: [JSONValue], connection: NWConnection, id: UUID
+  ) {
+    guard let message = try? JSONDecoder().decode(JSONValue.self, from: request.body),
+      message["jsonrpc"].string == "2.0", let method = message["method"].string
+    else {
+      send(.null, status: "400 Bad Request", connection: connection, id: id)
+      return
+    }
+    let requestID = message["id"]
+    if requestID == .null {
+      send(.null, status: "202 Accepted", connection: connection, id: id)
+      return
+    }
+    jobs[id] = Task { [weak self] in
+      guard let self else { return }
+      let result: JSONValue
+      switch method {
+      case "initialize":
+        result = .object([
+          "protocolVersion": .string("2025-03-26"),
+          "capabilities": .object(["tools": .object([:])]),
+          "serverInfo": .object(["name": .string("tonk"), "version": .string("1.0")]),
+        ])
+      case "ping": result = .object([:])
+      case "tools/list": result = .object(["tools": .array(tools)])
+      case "tools/call":
+        let name = message["params"]["name"].string ?? ""
+        guard tools.contains(where: { $0["name"].string == name }) else {
+          send(
+            .object([
+              "jsonrpc": .string("2.0"), "id": requestID,
+              "error": .object(["code": .number(-32602), "message": .string("Tool unavailable")]),
+            ]),
+            connection: connection, id: id)
+          return
+        }
+        do {
+          let response = try await handler(name, message["params"]["arguments"])
+          // Existing host tools return Codex-style success/content; MCP uses isError.
+          result = .object([
+            "content": .array(
+              response["contentItems"].array.map {
+                .object(["type": .string("text"), "text": $0["text"]])
+              }), "isError": .bool(response["success"].bool != true),
+          ])
+        } catch {
+          result = .object([
+            "content": .array([
+              .object([
+                "type": .string("text"),
+                "text": .string(error.localizedDescription),
+              ])
+            ]), "isError": .bool(true),
+          ])
+        }
+      default:
+        send(
+          .object([
+            "jsonrpc": .string("2.0"), "id": requestID,
+            "error": .object(["code": .number(-32601), "message": .string("Method unavailable")]),
+          ]),
+          connection: connection, id: id)
+        return
+      }
+      guard !Task.isCancelled, connections[id] != nil else { return }
+      send(
+        .object(["jsonrpc": .string("2.0"), "id": requestID, "result": result]),
+        connection: connection, id: id)
     }
   }
 

@@ -380,7 +380,7 @@ struct ContentView: View {
           .bottom, 8)
       }
 
-      if model.provider != .chatGPT && !model.signedIn {
+      if ![.chatGPT, .claude].contains(model.provider) && !model.signedIn {
         Button("Configure model") { showProviderSettings = true }.padding(20)
       } else if model.connected && !model.signedIn {
         VStack(spacing: 10) {
@@ -388,9 +388,15 @@ struct ContentView: View {
             ProgressView("Finish signing in in your browser")
             Button("Cancel sign-in") { Task { await model.cancelLogin() } }
           } else {
-            Button("Sign in with ChatGPT") { Task { await model.signIn() } }.nativeControl(
+            Button(model.provider == .claude ? "Sign in with Claude" : "Sign in with ChatGPT") {
+              Task { await model.signIn() }
+            }.nativeControl(
               prominent: true)
-            Text("Tonk keeps its own sign-in on this Mac.").font(.caption).foregroundStyle(
+            Text(
+              model.provider == .claude
+                ? "Uses your Claude Code sign-in on this Mac."
+                : "Tonk keeps its own sign-in on this Mac."
+            ).font(.caption).foregroundStyle(
               .secondary)
           }
         }.frame(maxWidth: .infinity).padding(20)
