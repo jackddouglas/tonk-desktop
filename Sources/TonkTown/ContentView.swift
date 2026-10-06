@@ -17,6 +17,8 @@ struct ContentView: View {
   }
   @State private var showHistory = false
   @State private var showProviderSettings = false
+  @State private var accountError: String?
+  @State private var signingOut = false
   @State private var sharingSpace: TonkSpace?
   @FocusState private var composing: Bool
 
@@ -56,7 +58,45 @@ struct ContentView: View {
       }
     }
     .nativeControl()
+    .disabled(signingOut)
+    .alert(
+      "Couldn’t sign out",
+      isPresented: Binding(
+        get: { accountError != nil }, set: { if !$0 { accountError = nil } }
+      )
+    ) {
+      Button("OK") { accountError = nil }
+    } message: {
+      Text(accountError ?? "")
+    }
     .toolbar {
+      ToolbarItem {
+        Menu {
+          if runtime.accountConnected && RuntimeLocation.deployment != .local {
+            Button("Sign out of Tonk") {
+              signingOut = true
+              Task {
+                defer { signingOut = false }
+                do {
+                  try await runtime.signOut()
+                  model.openedSpace = nil
+                  showingChat = false
+                } catch { accountError = error.localizedDescription }
+              }
+            }
+          }
+          if model.provider == .chatGPT && model.signedIn {
+            Button("Sign out of ChatGPT") { Task { await model.signOut() } }
+          }
+          Button("Model settings…") { showProviderSettings = true }
+        } label: {
+          Label(signingOut ? "Signing out…" : "Account", systemImage: "person.crop.circle")
+        }.labelStyle(.titleAndIcon)
+          .disabled(
+            model.busy || model.creatingSpace || model.connecting || model.loginPending
+              || runtime.signInPending || runtime.catalogLoading)
+      }
+
       ToolbarItem(placement: .navigation) {
         if model.openedSpace != nil {
           Button("All spaces", systemImage: "square.grid.2x2") {
@@ -65,24 +105,6 @@ struct ContentView: View {
           }
           .disabled(model.busy || model.creatingSpace)
         }
-      }
-      ToolbarItem(placement: .navigation) {
-        Button {
-          model.startSpaceChat()
-        } label: {
-          Label("New chat", systemImage: "square.and.pencil")
-        }
-        .disabled(model.openedSpace == nil || model.busy || model.creatingSpace).help("New chat")
-      }
-      ToolbarItem {
-        Button {
-          showHistory = true
-        } label: {
-          Label("Chat history", systemImage: "clock")
-        }
-        .disabled(
-          model.openedSpace == nil || model.busy || model.creatingSpace
-        ).help("Chat history")
       }
       ToolbarItem {
         Button("Model provider", systemImage: "slider.horizontal.3") { showProviderSettings = true }
@@ -124,6 +146,16 @@ struct ContentView: View {
       }
     }
     .onChange(of: showingChat) { _, visible in if !visible { composing = false } }
+  }
+
+  private var spaceChatActions: some View {
+    HStack(spacing: 8) {
+      Button("New chat", systemImage: "square.and.pencil") {
+        model.startSpaceChat()
+      }
+      Button("Chat history", systemImage: "clock") { showHistory = true }
+    }.labelStyle(.titleAndIcon)
+      .disabled(model.busy || model.connecting || model.creatingSpace || model.loginPending)
   }
 
   private var chat: some View {
@@ -238,7 +270,7 @@ struct ContentView: View {
           Button("Model provider…") { showProviderSettings = true }
             .disabled(model.busy || model.creatingSpace || model.loginPending || model.connecting)
           if model.provider == .chatGPT && model.signedIn {
-            Button("Sign out") { Task { await model.signOut() } }.disabled(
+            Button("Sign out of ChatGPT") { Task { await model.signOut() } }.disabled(
               model.busy || model.creatingSpace)
           }
         } label: {
@@ -345,16 +377,11 @@ struct ContentView: View {
               .font(.headline).lineLimit(1)
               .help(runtime.selectedSpace?.title ?? "Spaces")
             if runtime.selectedSpace != nil {
-              Text("Shared context and live content")
+              Text("Ask questions and work with an agent in this space")
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
           }
           Spacer(minLength: 0)
-          if let space = runtime.selectedSpace, model.saved.conversation.space?.id != space.id {
-            Button("Use for chat") { model.attachSpace(space) }
-              .disabled(model.busy || model.creatingSpace)
-              .help("Start a new conversation with this space. Your current conversation is saved.")
-          }
           if let space = runtime.selectedSpace {
             Button {
               sharingSpace = space
@@ -381,6 +408,12 @@ struct ContentView: View {
           .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
           .frame(width: 32, height: 32).controlSurface(radius: 16).fixedSize()
           .accessibilityLabel("Space options").help("Space options")
+        }
+        if runtime.selectedSpace != nil {
+          HStack {
+            spaceChatActions
+            Spacer(minLength: 0)
+          }
         }
         if runtime.signInPending {
           HStack {

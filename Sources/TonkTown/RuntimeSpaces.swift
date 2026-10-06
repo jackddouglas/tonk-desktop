@@ -37,6 +37,7 @@ extension RuntimeModel {
         if (!Array.isArray(rows)) throw new Error('Invalid space catalog response.');
         return {branch, spaces: rows.map(row => ({subject: row.fields.subject, name: row.fields.name || null}))};
         """)
+      try Task.checkCancellation()
       guard let rows = result["spaces"] else {
         throw CallbackError("The runtime returned no space catalog.")
       }
@@ -46,6 +47,8 @@ extension RuntimeModel {
       }
       catalogBranch = result["branch"] as? String
       catalogLoaded = true
+    } catch is CancellationError {
+      return
     } catch {
       catalogError =
         (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String

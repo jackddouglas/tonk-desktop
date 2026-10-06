@@ -4,6 +4,36 @@ import WebKit
 
 @MainActor
 extension RuntimeModel {
+  func signOut() async throws {
+    guard accountConnected, !signInPending, !catalogLoading else {
+      throw CallbackError("Wait for the current account operation to finish.")
+    }
+    catalogTask?.cancel()
+    stopMCPBridge()
+    _ = try await accountScript(Self.signOutScript)
+    accountConnected = false
+    accountMessage = nil
+    selectedSpace = nil
+    spaces = []
+    catalogBranch = nil
+    catalogLoaded = false
+    catalogError = nil
+    error = nil
+    webView.load(URLRequest(url: RuntimeLocation.home))
+  }
+
+  static let signOutScript = """
+    // This route unlinks this device; it does not delete the Tonk account.
+    const response = await fetch('/api/account', {
+      method: 'DELETE', signal: AbortSignal.timeout(60000)
+    });
+    if (!response.ok) throw new Error('Tonk sign-out failed (HTTP ' + response.status + ').');
+    const account = await api('/api/account');
+    if (!['rootMissing', 'unregistered'].includes(account.status))
+      throw new Error('A Tonk account is still active. Refresh before trying again.');
+    return {signedOut: true};
+    """
+
   func cancelSignIn() { callback?.cancel() }
 
   func signIn() async {

@@ -31,7 +31,8 @@ that enables Tonk's service-worker domain in the embedded web view.
 1. On first launch, **Sign in to Tonk** opens your browser to use your existing
    Tonk passkey. The app accepts the device grant and opens your space grid.
    If already signed in, the app opens directly to the grid.
-2. Open a space to see its content filling the window. **New chat** opens a fresh
+2. Open a space to see its content filling the window. Labeled **New chat** and
+   **Chat history** controls are in the space header. **New chat** opens a fresh
    chat alongside it; **Show chat** reveals the most recent conversation.
 3. Use **Model provider** in the toolbar to choose ChatGPT subscription sign-in,
    an API-key provider, or a local model. ChatGPT sign-in remains a separate step.
@@ -276,3 +277,11 @@ For a real-worker regression, serve the existing runtime using
 an isolated browser as described in `scripts/local-build-smoke.md`. It verifies
 person resolution, exact assignment/status filtering, projection of a 120 KB body,
 zero matches, and unchanged revisions with zero committed claims.
+
+### Signing out
+
+The **Account** menu in the title bar offers **Sign out of Tonk** and, when the
+ChatGPT provider is signed in, **Sign out of ChatGPT**. These are separate accounts.
+Tonk sign-out unlinks the app’s device through the existing account endpoint,
+closes the space, and returns to onboarding. Local chat files and saved model keys
+are retained; this is not account deletion. The external MCP bridge is stopped.
