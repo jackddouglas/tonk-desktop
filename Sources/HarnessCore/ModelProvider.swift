@@ -1,11 +1,12 @@
 import Foundation
 
 public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable {
-  case chatGPT, anthropic, openRouter, grok, local, compatible
+  case chatGPT, openAI, anthropic, openRouter, grok, local, compatible
   public var id: String { rawValue }
   public var title: String {
     switch self {
     case .chatGPT: "ChatGPT subscription"
+    case .openAI: "OpenAI API"
     case .anthropic: "Anthropic"
     case .openRouter: "OpenRouter"
     case .grok: "Grok (xAI)"
@@ -16,6 +17,7 @@ public enum ModelProvider: String, Codable, CaseIterable, Identifiable, Sendable
   public var baseURL: String {
     switch self {
     case .chatGPT: ""
+    case .openAI: "https://api.openai.com/v1"
     case .anthropic: "https://api.anthropic.com/v1"
     case .openRouter: "https://openrouter.ai/api/v1"
     case .grok: "https://api.x.ai/v1"

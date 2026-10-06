@@ -5,7 +5,7 @@ import XCTest
 
 final class APIModelTests: XCTestCase {
   func testEndpointsAndMigration() throws {
-    for provider in [ModelProvider.anthropic, .openRouter, .grok, .local] {
+    for provider in [ModelProvider.openAI, .anthropic, .openRouter, .grok, .local] {
       let endpoint = try ModelConnection(provider: provider, model: "test-model").endpoint()
       XCTAssertEqual(
         endpoint.lastPathComponent, provider == .anthropic ? "messages" : "completions")
@@ -33,7 +33,7 @@ final class APIModelTests: XCTestCase {
       APIMessage(role: "user", text: "Inspect"), APIMessage(role: "assistant", calls: [call]),
       APIMessage(role: "tool", text: "result", toolID: call.id),
     ]
-    for provider in [ModelProvider.anthropic, .openRouter, .grok, .local, .compatible] {
+    for provider in [ModelProvider.openAI, .anthropic, .openRouter, .grok, .local, .compatible] {
       var config = ModelConnection(
         provider: provider, baseURL: provider == .compatible ? "https://example.com/v1" : nil,
         model: "test")
