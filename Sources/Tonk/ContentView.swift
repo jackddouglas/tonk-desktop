@@ -26,7 +26,7 @@ struct ContentView: View {
   @State private var sharingSpace: TonkSpace?
   @FocusState private var composing: Bool
 
-  var body: some View {
+  private var windowContent: some View {
     ZStack {
       GeometryReader { geometry in
         AnimatedSidebar(
@@ -72,6 +72,10 @@ struct ContentView: View {
     )
     .focusedSceneValue(\.refreshContent, refreshDisabled ? nil : refreshContent)
     .focusedSceneValue(
+      \.toggleAgentSidebar,
+      model.openedSpace == nil || signingOut ? nil : toggleAgentSidebar
+    )
+    .focusedSceneValue(
       \.openSpaceInBrowser, model.openedSpace == nil || signingOut ? nil : openSpaceInBrowser
     )
     .navigationTitle(
@@ -90,6 +94,10 @@ struct ContentView: View {
     )
     .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
     .disabled(signingOut)
+  }
+
+  var body: some View {
+    windowContent
     .alert(
       "Couldn’t sign out",
       isPresented: Binding(
@@ -142,13 +150,12 @@ struct ContentView: View {
     if model.openedSpace != nil {
       ToolbarItem(id: "toggle-chat", placement: .navigation) {
         Button {
-          showingChat.toggle()
+          toggleAgentSidebar()
         } label: {
           Image(systemName: "sidebar.left").frame(width: 20, height: 20)
         }.nativeControl(circular: true).controlSize(.large)
           .accessibilityLabel(showingChat ? "Hide chat" : "Show chat")
           .help(showingChat ? "Hide chat (⌘B)" : "Show chat (⌘B)")
-          .keyboardShortcut("b", modifiers: .command)
       }.customGlassToolbarItem()
     }
     if model.openedSpace != nil {
@@ -216,6 +223,10 @@ struct ContentView: View {
   private func openSpaceInBrowser() {
     guard let space = model.openedSpace else { return }
     NSWorkspace.shared.open(space.url)
+  }
+
+  private func toggleAgentSidebar() {
+    showingChat.toggle()
   }
 
   private var moreMenu: some View {
