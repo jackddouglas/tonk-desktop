@@ -3,7 +3,7 @@ import HarnessCore
 import SwiftUI
 
 @main
-struct TonkTownApp: App {
+struct TonkApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
   @StateObject private var model = HarnessModel()
   @StateObject private var runtime = RuntimeModel()

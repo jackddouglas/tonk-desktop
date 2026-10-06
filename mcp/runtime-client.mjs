@@ -22,7 +22,7 @@ export async function connectRuntime(path) {
       body: JSON.stringify(body),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(65000)]) : AbortSignal.timeout(65000),
     });
-    if (!response.ok) throw new Error(`Runtime connection failed (HTTP ${response.status}). Reconnect to Tonk Town.`);
+    if (!response.ok) throw new Error(`Runtime connection failed (HTTP ${response.status}). Reconnect to Tonk.`);
     let size = 0;
     const chunks = [];
     for await (const chunk of response.body) {

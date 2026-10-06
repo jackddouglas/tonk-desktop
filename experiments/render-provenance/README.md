@@ -199,7 +199,7 @@ public renderer protocol solely to solve this host race.
 
 [runtime-completion.md](runtime-completion.md) supersedes the earlier test-only
 boundary for a restricted inline path. Its combined patch exposes synchronous
-subtree completion evidence in the real runtime and is installed in Tonk Town's
+subtree completion evidence in the real runtime and is installed in Tonk's
 local profile. Worker integration, native agent and service-worker smoke evidence
 are recorded there. Other render paths and a global rendered revision remain
 unverified; older entries above describe their respective checkpoints.

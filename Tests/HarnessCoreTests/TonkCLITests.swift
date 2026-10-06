@@ -27,9 +27,9 @@ final class TonkCLITests: XCTestCase {
       """.utf8
     ).write(to: script)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
-    setenv("TONK_TOWN_TONK", script.path, 1)
-    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    let old = ProcessInfo.processInfo.environment["TONK_CLI"]
+    setenv("TONK_CLI", script.path, 1)
+    defer { if let old { setenv("TONK_CLI", old, 1) } else { unsetenv("TONK_CLI") } }
     for operation in ["query", "show"] {
       let request: JSONValue = .object(["operation": .string(operation), "target": .string("task")])
       let result = try await cli.executeTool(request)
@@ -55,9 +55,9 @@ final class TonkCLITests: XCTestCase {
     try Data("#!/bin/sh\nprintf '%s' '\(registry)' > \"$TONK_SPACES_STATE/spaces.json\"\n".utf8)
       .write(to: script)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
-    setenv("TONK_TOWN_TONK", script.path, 1)
-    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    let old = ProcessInfo.processInfo.environment["TONK_CLI"]
+    setenv("TONK_CLI", script.path, 1)
+    defer { if let old { setenv("TONK_CLI", old, 1) } else { unsetenv("TONK_CLI") } }
     let cli = TonkCLI(root: root, subject: "did:key:zScratch")
     var invitations = 0
     for _ in 0..<2 {
@@ -78,9 +78,9 @@ final class TonkCLITests: XCTestCase {
     try FileManager.default.createDirectory(at: cli.directory, withIntermediateDirectories: true)
     try Data("retained fixture invitation".utf8).write(
       to: cli.directory.appendingPathComponent("pending-link"))
-    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
-    setenv("TONK_TOWN_TONK", "/usr/bin/false", 1)
-    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    let old = ProcessInfo.processInfo.environment["TONK_CLI"]
+    setenv("TONK_CLI", "/usr/bin/false", 1)
+    defer { if let old { setenv("TONK_CLI", old, 1) } else { unsetenv("TONK_CLI") } }
     var invitations = 0
     do {
       try await cli.ensureConnected {
@@ -127,15 +127,15 @@ final class TonkCLITests: XCTestCase {
         .utf8
     ).write(to: script)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-    let oldBinary = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
+    let oldBinary = ProcessInfo.processInfo.environment["TONK_CLI"]
     let oldSpace = ProcessInfo.processInfo.environment["TONK_SPACE"]
-    setenv("TONK_TOWN_TONK", script.path, 1)
+    setenv("TONK_CLI", script.path, 1)
     setenv("TONK_SPACE", "ambient", 1)
     defer {
       if let oldBinary {
-        setenv("TONK_TOWN_TONK", oldBinary, 1)
+        setenv("TONK_CLI", oldBinary, 1)
       } else {
-        unsetenv("TONK_TOWN_TONK")
+        unsetenv("TONK_CLI")
       }
       if let oldSpace { setenv("TONK_SPACE", oldSpace, 1) } else { unsetenv("TONK_SPACE") }
     }
@@ -155,9 +155,9 @@ final class TonkCLITests: XCTestCase {
     let script = root.appendingPathComponent("fixture")
     try Data("#!/usr/bin/python3\nimport time\ntime.sleep(30)\n".utf8).write(to: script)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-    let old = ProcessInfo.processInfo.environment["TONK_TOWN_TONK"]
-    setenv("TONK_TOWN_TONK", script.path, 1)
-    defer { if let old { setenv("TONK_TOWN_TONK", old, 1) } else { unsetenv("TONK_TOWN_TONK") } }
+    let old = ProcessInfo.processInfo.environment["TONK_CLI"]
+    setenv("TONK_CLI", script.path, 1)
+    defer { if let old { setenv("TONK_CLI", old, 1) } else { unsetenv("TONK_CLI") } }
     let cli = TonkCLI(root: root, subject: "did:key:zScratch")
     let task = Task { try await cli.run([]) }
     try await Task.sleep(for: .milliseconds(200))

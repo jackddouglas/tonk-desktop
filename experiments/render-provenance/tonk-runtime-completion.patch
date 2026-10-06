@@ -1235,12 +1235,12 @@ index 000000000..0dd957842
 +  with:
 +    title:
 +      description: Checklist task label
-+      the: town.direct-build/title
++      the: tonk.direct-build/title
 +      as: text
 +      cardinality: one
 +    status:
 +      description: Local build verification status
-+      the: town.direct-build/status
++      the: tonk.direct-build/status
 +      as: text
 +      cardinality: one
 +
@@ -1264,7 +1264,7 @@ index 000000000..0dd957842
 +  with:
 +    subject:
 +      description: Repository identity for this space
-+      the: town.render-home/subject
++      the: tonk.render-home/subject
 +      as: entity
 +
 +view!:

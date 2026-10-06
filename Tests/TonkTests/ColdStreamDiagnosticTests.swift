@@ -1,7 +1,7 @@
 import WebKit
 import XCTest
 
-@testable import TonkTown
+@testable import Tonk
 
 /// Opt-in checks against locally served fixtures. Ordinary test runs need no server.
 @MainActor

@@ -72,7 +72,7 @@ public final class AppServerClient {
         params: .object([
           "capabilities": .object(["experimentalApi": .bool(true)]),
           "clientInfo": .object([
-            "name": .string("tonk_town"),
+            "name": .string("tonk"),
             "title": .string("Tonk"), "version": .string("0.1.0"),
           ]),
         ]))

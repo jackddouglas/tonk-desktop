@@ -21,9 +21,9 @@ public enum RuntimeLocation {
     }
     public var dataDirectory: String {
       switch self {
-      case .production: "Tonk Town"
-      case .local: "Tonk Town Local"
-      case .custom: "Tonk Town Remote " + identifier
+      case .production: "Tonk"
+      case .local: "Tonk Local"
+      case .custom: "Tonk Remote " + identifier
       }
     }
     public var webDataIdentifier: UUID? {

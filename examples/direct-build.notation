@@ -3,12 +3,12 @@ concept!: &direct-build-task
   with:
     title:
       description: Checklist task label
-      the: town.direct-build/title
+      the: tonk.direct-build/title
       as: text
       cardinality: one
     status:
       description: Local build verification status
-      the: town.direct-build/status
+      the: tonk.direct-build/status
       as: text
       cardinality: one
 

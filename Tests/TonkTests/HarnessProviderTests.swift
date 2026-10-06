@@ -2,7 +2,7 @@ import Foundation
 import HarnessCore
 import XCTest
 
-@testable import TonkTown
+@testable import Tonk
 
 final class HarnessProviderTests: XCTestCase {
   @MainActor

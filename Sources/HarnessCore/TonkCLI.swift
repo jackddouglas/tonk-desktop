@@ -97,12 +97,12 @@ public final class TonkCLI {
         at: path, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     }
     let candidates = [
-      ProcessInfo.processInfo.environment["TONK_TOWN_TONK"],
+      ProcessInfo.processInfo.environment["TONK_CLI"],
       fm.homeDirectoryForCurrentUser.appendingPathComponent(".cargo/bin/tonk").path,
       "/opt/homebrew/bin/tonk", "/usr/local/bin/tonk",
     ].compactMap { $0 }
     guard let binary = candidates.first(where: { fm.isExecutableFile(atPath: $0) }) else {
-      throw HarnessError.message("Install the Tonk CLI or set TONK_TOWN_TONK to its executable.")
+      throw HarnessError.message("Install the Tonk CLI or set TONK_CLI to its executable.")
     }
     let output = directory.appendingPathComponent("run-\(UUID().uuidString).log")
     fm.createFile(atPath: output.path, contents: nil, attributes: [.posixPermissions: 0o600])

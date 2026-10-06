@@ -1,7 +1,7 @@
 # Local worker build-loop smoke test
 
 Use an isolated browser and a checkout containing the conditional evaluator.
-This test creates a disposable local space; it never uses a signed-in Town
+This test creates a disposable local space; it never uses a signed-in Tonk
 profile. The server has no access-service proxy and refuses network API routes.
 
 Build from the Tonk checkout (the HTML path is relative to the Trunk config):

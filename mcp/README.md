@@ -1,6 +1,6 @@
 # Local Tonk MCP experiment
 
-By default three read-only tools expose the running Tonk Town runtime:
+By default three read-only tools expose the running Tonk runtime:
 `tonk_query`, `tonk_preview`, and `tonk_inspect_view`. Query and preview run in
 the local worker; inspection reads the open WKWebView and its sandboxed frames. No CLI process or second replica is created. MCP stdio uses the
 official TypeScript SDK; a small authenticated loopback transport connects the
@@ -10,7 +10,7 @@ Build the app with `bash scripts/build-app.sh`. Quit the running instance, then
 launch it with one explicit space capability:
 
 ```sh
-open '.build/Tonk Town.app' --args --staging --mcp-space 'did:key:YOUR_SPACE'
+open '.build/Tonk.app' --args --local-runtime --mcp-space 'did:key:YOUR_SPACE'
 ```
 
 The account must already have access to that space. Switching the displayed space
@@ -35,13 +35,13 @@ Configure any local MCP host to run:
 {
   "command": "/absolute/path/to/node",
   "args": [
-    "/absolute/path/to/tonk-town/mcp/server.mjs",
-    "/Users/YOU/Library/Application Support/Tonk Town Staging/MCP/connection.json"
+    "/absolute/path/to/tonk-desktop/mcp/server.mjs",
+    "/Users/YOU/Library/Application Support/Tonk Local/MCP/connection.json"
   ]
 }
 ```
 
-For production the support directory is `Tonk Town`. Keep this private connection
+For production the support directory is `Tonk`. Keep this private connection
 file out of source control, logs and agent context; it grants access to the pinned
 space's read-only operations. The adapter reads it directly. Neither an MCP client
 nor its model receives account grants or chooses arbitrary URLs, scripts or spaces.

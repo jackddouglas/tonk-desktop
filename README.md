@@ -28,3 +28,11 @@ ChatGPT sign-in requires the [Codex CLI](https://learn.chatgpt.com/docs/cli).
 
 Chats and drafts stay on your Mac. Messages are sent to your selected model provider,
 and API keys are stored in macOS Keychain.
+
+Developer overrides: `TONK_CODEX` selects the Codex executable, `TONK_CLI` selects
+the Tonk CLI, and `TONK_SIGN_IDENTITY` selects the app signing identity.
+
+The app uses bundle ID `xyz.tonk`, stores production data in
+`~/Library/Application Support/Tonk`, and keeps model keys under `xyz.tonk.models`.
+Changing the app identity starts with fresh data and requires signing in and
+entering provider keys again. Existing data and Keychain items remain untouched.

@@ -106,7 +106,7 @@ final class HarnessModel: ObservableObject {
     }
     do {
       let candidates = [
-        ProcessInfo.processInfo.environment["TONK_TOWN_CODEX"],
+        ProcessInfo.processInfo.environment["TONK_CODEX"],
         "/opt/homebrew/bin/codex", "/usr/local/bin/codex",
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
           ".nix-profile/bin/codex"
@@ -118,7 +118,7 @@ final class HarnessModel: ObservableObject {
         })
       else {
         throw HarnessError.message(
-          "Codex was not found. Install the Codex CLI, then reconnect. TONK_TOWN_CODEX can select another executable."
+          "Codex was not found. Install the Codex CLI, then reconnect. TONK_CODEX can select another executable."
         )
       }
       try await client.start(

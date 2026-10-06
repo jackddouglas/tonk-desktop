@@ -5,7 +5,7 @@ import WebKit
 /// The bridge registers frame handles only; it cannot perform native actions.
 @MainActor
 final class RuntimeInspection: NSObject, WKScriptMessageHandler {
-  static let world = WKContentWorld.world(name: "TonkTownInspection")
+  static let world = WKContentWorld.world(name: "TonkInspection")
   private var frames: [String: WKFrameInfo] = [:]
   private var overflow = false
   private var generation = 0

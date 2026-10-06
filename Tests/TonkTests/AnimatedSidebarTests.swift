@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import XCTest
 
-@testable import TonkTown
+@testable import Tonk
 
 @MainActor
 final class AnimatedSidebarTests: XCTestCase {

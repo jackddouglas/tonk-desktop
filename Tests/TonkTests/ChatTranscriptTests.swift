@@ -1,7 +1,7 @@
 import HarnessCore
 import XCTest
 
-@testable import TonkTown
+@testable import Tonk
 
 final class ChatTranscriptTests: XCTestCase {
   func testConsecutiveRepliesShareSelectionWithoutCrossingUserMessages() {

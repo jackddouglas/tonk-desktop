@@ -42,7 +42,7 @@ try {
         } catch {
           const text = tool.name === 'tonk_apply'
             ? 'The write outcome is unknown. Reconnect and query the space before deciding what to do. Do not repeat the write automatically.'
-            : 'The local runtime connection failed. Reconnect to Tonk Town and retry this read-only operation.';
+            : 'The local runtime connection failed. Reconnect to Tonk and retry this read-only operation.';
           return { isError: true, content: [{ type: 'text', text }] };
         }
       });

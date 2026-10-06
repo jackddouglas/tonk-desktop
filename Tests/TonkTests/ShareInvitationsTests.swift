@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import TonkTown
+@testable import Tonk
 
 @MainActor
 final class ShareInvitationsTests: XCTestCase {

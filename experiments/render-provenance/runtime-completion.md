@@ -1,7 +1,7 @@
 # Runtime completion feedback — local integration
 
 The experimental runtime now exposes `tonkDisplay.inspectCompletion()` in its
-ordinary, non-test build. Tonk Town forwards these observations through
+ordinary, non-test build. Tonk forwards these observations through
 `tonk_inspect_view`. The runtime method has no native-host dependency.
 
 ## Contract
@@ -54,7 +54,7 @@ cargo test -p tonk-display --test render_completion_fullstack --target wasm32-un
 trunk build --config rust/tonk-ui/Trunk.toml index.html --dist /tmp/tonk-completion-runtime-dist
 ```
 
-From Town, serve `/tmp/tonk-completion-runtime-dist` with
+From Tonk, serve `/tmp/tonk-completion-runtime-dist` with
 `scripts/serve-local-runtime.py`, build using `scripts/build-app.sh`, and launch
 with `--local-runtime`. This uses the existing isolated Local profile. No
 production or staging data, dependency pins, or remote deployment were changed.

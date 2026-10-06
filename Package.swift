@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-  name: "TonkTown",
+  name: "Tonk",
   platforms: [.macOS("15.0")],
-  products: [.executable(name: "TonkTown", targets: ["TonkTown"])],
+  products: [.executable(name: "Tonk", targets: ["Tonk"])],
   dependencies: [
     .package(url: "https://github.com/gonzalezreal/textual", from: "0.5.0")
   ],
   targets: [
     .target(name: "HarnessCore"),
     .executableTarget(
-      name: "TonkTown",
+      name: "Tonk",
       dependencies: [
         "HarnessCore", .product(name: "Textual", package: "textual"),
       ]),
     .testTarget(name: "HarnessCoreTests", dependencies: ["HarnessCore"]),
-    .testTarget(name: "TonkTownTests", dependencies: ["TonkTown"]),
+    .testTarget(name: "TonkTests", dependencies: ["Tonk"]),
   ]
 )

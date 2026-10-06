@@ -6,8 +6,8 @@ final class CLIToolsTests: XCTestCase {
   func testOnlyFixedOperationsAndTargetsAreAccepted() throws {
     XCTAssertEqual(
       try CLITools.arguments(
-        .object(["operation": .string("query"), "target": .string("town-checklist")])),
-      ["--space", "attached", "query", "town-checklist"])
+        .object(["operation": .string("query"), "target": .string("tonk-checklist")])),
+      ["--space", "attached", "query", "tonk-checklist"])
     for value: JSONValue in [
       .object(["operation": .string("join"), "target": .string("secret")]),
       .object(["operation": .string("query"), "target": .string("--help")]),
@@ -32,16 +32,16 @@ final class CLIToolsTests: XCTestCase {
   }
 
   func testPreviewAndApplyUseInlineDocumentAndFixedSyncPolicy() throws {
-    let doc = "town-checklist!:\n  this: id:town-checklist-smoke\n  verify: Done"
+    let doc = "tonk-checklist!:\n  this: id:tonk-checklist-smoke\n  verify: Done"
     let preview = try CLITools.arguments(
       .object([
         "operation": .string("preview"), "document": .string(doc),
-        "home": .string("town-checklist"),
+        "home": .string("tonk-checklist"),
       ]))
     XCTAssertEqual(
       preview,
       [
-        "--space", "attached", "eval", "-c", doc, "--quiet", "--json", "--home", "town-checklist",
+        "--space", "attached", "eval", "-c", doc, "--quiet", "--json", "--home", "tonk-checklist",
         "--dry-run",
       ])
     let apply = try CLITools.arguments(

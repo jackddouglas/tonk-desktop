@@ -2,7 +2,7 @@ import HarnessCore
 import WebKit
 import XCTest
 
-@testable import TonkTown
+@testable import Tonk
 
 @MainActor
 final class RuntimeInspectionTests: XCTestCase {

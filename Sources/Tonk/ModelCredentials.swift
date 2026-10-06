@@ -8,7 +8,7 @@ struct ModelCredentials {
   private func query(_ connection: ModelConnection) -> [String: Any] {
     [
       kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: "xyz.tonk.town.models.\(scope)",
+      kSecAttrService as String: "xyz.tonk.models.\(scope)",
       kSecAttrAccount as String: connection.provider.rawValue + ":" + connection.baseURL,
     ]
   }
