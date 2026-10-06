@@ -176,3 +176,16 @@ struct RuntimeView: NSViewRepresentable {
   func makeNSView(context: Context) -> WKWebView { model.webView }
   func updateNSView(_ nsView: WKWebView, context: Context) {}
 }
+
+/// Extend only the page's blurred background; embedded frame headers need the safe area.
+struct RuntimeToolbarBackground: ViewModifier {
+  var enabled: Bool
+
+  @ViewBuilder func body(content: Content) -> some View {
+    if #available(macOS 26.0, *), enabled {
+      content.backgroundExtensionEffect()
+    } else {
+      content
+    }
+  }
+}

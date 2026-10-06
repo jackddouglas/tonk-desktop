@@ -35,6 +35,7 @@ struct ContentView: View {
           sidebar: chat, detail: workspace
         )
       }
+      .modifier(RuntimeToolbarBackground(enabled: !reduceTransparency))
       .opacity(model.openedSpace != nil ? 1 : 0)
       .allowsHitTesting(model.openedSpace != nil)
       .accessibilityHidden(model.openedSpace == nil)
@@ -79,7 +80,11 @@ struct ContentView: View {
       RuntimeLocation.deployment == .production ? "" : RuntimeLocation.home.absoluteString
     )
     .toolbar { windowToolbar }
-    .toolbarBackground(Color(nsColor: .textBackgroundColor), for: .windowToolbar)
+    .toolbarBackground(
+      reduceTransparency
+        ? AnyShapeStyle(Color(nsColor: .textBackgroundColor)) : AnyShapeStyle(.ultraThinMaterial),
+      for: .windowToolbar
+    )
     .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
     .disabled(signingOut)
     .alert(
