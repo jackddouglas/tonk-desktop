@@ -34,20 +34,14 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
       arguments.indices.contains(index + 1), let id = UUID(uuidString: arguments[index + 1])
     {
       configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: id)
+    } else if let id = RuntimeLocation.deployment.webDataIdentifier {
+      configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: id)
     } else {
-      switch RuntimeLocation.deployment {
-      case .production: configuration.websiteDataStore = .default()
-      case .staging:
-        configuration.websiteDataStore = WKWebsiteDataStore(
-          forIdentifier: UUID(uuidString: "58BD1C91-3442-4CDA-9267-FD7B7C7A8A1D")!)
-      case .local:
-        configuration.websiteDataStore = WKWebsiteDataStore(
-          forIdentifier: UUID(uuidString: "65D52CA2-3801-4DD8-9400-473F2335BCAE")!)
-      }
+      configuration.websiteDataStore = .default()
     }
     // The native picker can cover/detach this view while still querying its worker.
     configuration.preferences.inactiveSchedulingPolicy = .none
-    configuration.limitsNavigationsToAppBoundDomains = true
+    // User-selected remotes are restricted by the navigation delegate, not a static bundle list.
     inspection.install(on: configuration.userContentController)
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()

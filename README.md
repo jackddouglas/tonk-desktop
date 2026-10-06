@@ -24,6 +24,11 @@ open .build/Tonk.app
 2. Open a space, then click **New chat** to work with an assistant alongside it.
 3. Open **Settings…** to choose ChatGPT, an API provider, or a local model.
 
+Use **Settings… → Advanced…** (or **More options → Advanced settings…**) to edit
+the remote URL. The default is `tonk.network`; enter a custom HTTPS remote to use
+another server. Save, then quit and reopen Tonk. Each remote keeps separate account
+data and chats on this Mac. The `--local-runtime` launch flag overrides this preference.
+
 ChatGPT sign-in requires the [Codex CLI](https://learn.chatgpt.com/docs/cli).
 
 Chats and drafts stay on your Mac. Messages are sent to your selected model provider,

@@ -8,6 +8,7 @@ struct ProviderSettingsView: View {
   @State private var connection: ModelConnection
   @State private var key = ""
   @State private var saving = false
+  @State private var showAdvancedSettings = false
   @State private var error: String?
 
   init(model: HarnessModel) {
@@ -106,6 +107,7 @@ struct ProviderSettingsView: View {
       .font(.caption).foregroundStyle(.secondary)
       if let error { Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
       HStack {
+        Button("Advanced…") { showAdvancedSettings = true }
         Spacer()
         Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
         Button(saving ? "Saving…" : "Apply") {
@@ -125,6 +127,7 @@ struct ProviderSettingsView: View {
     }
     .padding(24).frame(width: 540).nativeControl().disabled(saving)
     .interactiveDismissDisabled(saving)
+    .sheet(isPresented: $showAdvancedSettings) { AdvancedSettingsView() }
     .onChange(of: selected) { _, value in
       if connection.provider != value {
         connection = model.saved.connections?[value.rawValue] ?? ModelConnection(provider: value)

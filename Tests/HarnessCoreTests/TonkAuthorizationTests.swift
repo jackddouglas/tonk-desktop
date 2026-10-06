@@ -4,22 +4,23 @@ import XCTest
 @testable import HarnessCore
 
 final class TonkAuthorizationTests: XCTestCase {
+  private let customRemote = try! RuntimeLocation.remote("remote.example")
   func testLocalRuntimeIsStrictlyIsolatedByOriginAndDataDirectory() {
     let local = RuntimeLocation.Deployment.local
     XCTAssertEqual(local.home.absoluteString, "http://127.0.0.1:4187")
-    XCTAssertNotEqual(local.dataDirectory, RuntimeLocation.Deployment.staging.dataDirectory)
+    XCTAssertNotEqual(local.dataDirectory, customRemote.dataDirectory)
     XCTAssertNotEqual(local.dataDirectory, RuntimeLocation.Deployment.production.dataDirectory)
     XCTAssertTrue(
       RuntimeLocation.isEmbedded(local.home.appendingPathComponent("space/test"), deployment: local)
     )
     for value in [
       "http://127.0.0.1:4188", "http://localhost:4187", "http://127.0.0.1",
-      "https://127.0.0.1:4187", "http://user@127.0.0.1:4187", "https://staging.tonk.xyz",
+      "https://127.0.0.1:4187", "http://user@127.0.0.1:4187", "https://remote.example",
       "https://tonk.network",
     ] {
       XCTAssertFalse(RuntimeLocation.isEmbedded(URL(string: value)!, deployment: local), value)
     }
-    for deployment: RuntimeLocation.Deployment in [.production, .staging] {
+    for deployment: RuntimeLocation.Deployment in [.production, customRemote] {
       XCTAssertFalse(RuntimeLocation.isEmbedded(local.home, deployment: deployment))
     }
   }
@@ -27,17 +28,17 @@ final class TonkAuthorizationTests: XCTestCase {
   func testDeploymentsRejectEachOthersAuthorization() throws {
     XCTAssertNoThrow(
       try TonkAuthorization(
-        data: payload(remote: "https://staging.tonk.xyz/ucan/"), deployment: .staging))
-    XCTAssertThrowsError(try TonkAuthorization(data: payload(), deployment: .staging))
+        data: payload(remote: "https://remote.example/ucan/"), deployment: customRemote))
+    XCTAssertThrowsError(try TonkAuthorization(data: payload(), deployment: customRemote))
     XCTAssertThrowsError(
       try TonkAuthorization(
-        data: payload(remote: "https://staging.tonk.xyz/ucan/"), deployment: .production))
+        data: payload(remote: "https://remote.example/ucan/"), deployment: .production))
     XCTAssertFalse(
-      RuntimeLocation.isEmbedded(URL(string: "https://tonk.network")!, deployment: .staging))
+      RuntimeLocation.isEmbedded(URL(string: "https://tonk.network")!, deployment: customRemote))
     XCTAssertFalse(
-      RuntimeLocation.isEmbedded(URL(string: "https://staging.tonk.xyz")!, deployment: .production))
+      RuntimeLocation.isEmbedded(URL(string: "https://remote.example")!, deployment: .production))
     XCTAssertNotEqual(
-      RuntimeLocation.Deployment.staging.dataDirectory,
+      customRemote.dataDirectory,
       RuntimeLocation.Deployment.production.dataDirectory)
   }
   private func payload(remote: String = "https://tonk.network/ucan/", delegation: String = "00aAFF")

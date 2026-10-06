@@ -21,6 +21,7 @@ struct ContentView: View {
   @State private var searchFocusRequest = 0
   @State private var showHistory = false
   @State private var showProviderSettings = false
+  @State private var showAdvancedSettings = false
   @State private var accountError: String?
   @State private var signingOut = false
   @State private var sharingSpace: TonkSpace?
@@ -91,6 +92,7 @@ struct ContentView: View {
     .sheet(isPresented: $showProviderSettings) {
       ProviderSettingsView(model: model)
     }
+    .sheet(isPresented: $showAdvancedSettings) { AdvancedSettingsView() }
     .sheet(item: $sharingSpace) { space in
       ShareSpaceView(runtime: runtime, space: space)
     }
@@ -218,6 +220,7 @@ struct ContentView: View {
         "Model settings…", symbol: "slider.horizontal.3",
         enabled: !accountActionsDisabled
       ) { showProviderSettings = true }
+      menu.addAction("Advanced settings…", symbol: "gearshape") { showAdvancedSettings = true }
       if model.provider == .chatGPT && model.signedIn {
         menu.addAction("Sign out of ChatGPT", enabled: !accountActionsDisabled) {
           Task { await model.signOut() }
