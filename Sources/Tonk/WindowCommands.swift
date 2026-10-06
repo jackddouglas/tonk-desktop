@@ -3,8 +3,13 @@ import SwiftUI
 private struct ModelSettingsKey: FocusedValueKey { typealias Value = () -> Void }
 private struct RefreshContentKey: FocusedValueKey { typealias Value = () -> Void }
 private struct SearchFocusKey: FocusedValueKey { typealias Value = () -> Void }
+private struct OpenSpaceInBrowserKey: FocusedValueKey { typealias Value = () -> Void }
 
 extension FocusedValues {
+  var openSpaceInBrowser: (() -> Void)? {
+    get { self[OpenSpaceInBrowserKey.self] }
+    set { self[OpenSpaceInBrowserKey.self] = newValue }
+  }
   var refreshContent: (() -> Void)? {
     get { self[RefreshContentKey.self] }
     set { self[RefreshContentKey.self] = newValue }
@@ -24,6 +29,7 @@ struct WindowCommands: Commands {
   @FocusedValue(\.focusSearch) private var focusSearch
 
   @FocusedValue(\.refreshContent) private var refreshContent
+  @FocusedValue(\.openSpaceInBrowser) private var openSpaceInBrowser
 
   var body: some Commands {
     CommandGroup(replacing: .appSettings) {
@@ -33,6 +39,9 @@ struct WindowCommands: Commands {
     CommandGroup(after: .toolbar) {
       Button("Refresh") { refreshContent?() }
         .keyboardShortcut("r").disabled(refreshContent == nil)
+      Button("Open in browser") { openSpaceInBrowser?() }
+        .keyboardShortcut(.rightArrow, modifiers: .command)
+        .disabled(openSpaceInBrowser == nil)
     }
     CommandGroup(after: .textEditing) {
       Button("Find…") { focusSearch?() }

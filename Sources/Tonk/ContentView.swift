@@ -71,6 +71,9 @@ struct ContentView: View {
         ? { searchFocusRequest += 1 } : nil
     )
     .focusedSceneValue(\.refreshContent, refreshDisabled ? nil : refreshContent)
+    .focusedSceneValue(
+      \.openSpaceInBrowser, model.openedSpace == nil || signingOut ? nil : openSpaceInBrowser
+    )
     .navigationTitle(
       model.openedSpace?.title
         ?? (runtime.accountConnected || RuntimeLocation.deployment == .local
@@ -144,8 +147,8 @@ struct ContentView: View {
           Image(systemName: "sidebar.left").frame(width: 20, height: 20)
         }.nativeControl(circular: true).controlSize(.large)
           .accessibilityLabel(showingChat ? "Hide chat" : "Show chat")
-          .help(showingChat ? "Hide chat" : "Show chat")
-          .keyboardShortcut("0", modifiers: [.command, .option])
+          .help(showingChat ? "Hide chat (⌘B)" : "Show chat (⌘B)")
+          .keyboardShortcut("b", modifiers: .command)
       }.customGlassToolbarItem()
     }
     if model.openedSpace != nil {
@@ -210,6 +213,11 @@ struct ContentView: View {
     if model.openedSpace == nil { Task { await runtime.refreshSpaces() } } else { runtime.load() }
   }
 
+  private func openSpaceInBrowser() {
+    guard let space = model.openedSpace else { return }
+    NSWorkspace.shared.open(space.url)
+  }
+
   private var moreMenu: some View {
     AnchoredMenuButton {
       let menu = NSMenu()
@@ -217,10 +225,10 @@ struct ContentView: View {
       menu.addAction(
         "Refresh", symbol: "arrow.clockwise", key: "r",
         enabled: !refreshDisabled, action: refreshContent)
-      if let space = model.openedSpace {
-        menu.addAction("Open in browser", symbol: "arrow.up.right.square") {
-          NSWorkspace.shared.open(space.url)
-        }
+      if model.openedSpace != nil {
+        menu.addAction(
+          "Open in browser", symbol: "arrow.up.right.square", key: "\u{F703}",
+          action: openSpaceInBrowser)
       }
       menu.addItem(.separator())
       menu.addAction(
