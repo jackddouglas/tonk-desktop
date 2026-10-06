@@ -36,13 +36,26 @@ struct ContentView: View {
         )
       }
       .modifier(RuntimeToolbarBackground(enabled: !reduceTransparency))
-      .opacity(model.openedSpace != nil ? 1 : 0)
+      .opacity(model.openedSpace != nil || runtime.nativeSignInPending ? 1 : 0)
       .allowsHitTesting(model.openedSpace != nil)
       .accessibilityHidden(model.openedSpace == nil)
       if model.openedSpace == nil {
         if !runtime.accountConnected && RuntimeLocation.deployment != .local {
-          TonkWelcomeView(runtime: runtime)
-
+          if runtime.accountStatusKnown {
+            TonkWelcomeView(runtime: runtime)
+          } else {
+            let failure = runtime.accountMessage ?? runtime.error ?? runtime.catalogError
+            SpaceLoadingView(
+              title: failure == nil ? "Opening Tonk…" : "Couldn’t open Tonk",
+              detail: failure ?? "Loading your workspace.",
+              waiting: failure != nil
+            ) {
+              if failure != nil {
+                Button("Try again") { runtime.load() }.nativeControl()
+              }
+            }
+            .background(.background)
+          }
         } else {
           SpacePickerView(runtime: runtime, search: $spaceSearch) { space in
             Task {

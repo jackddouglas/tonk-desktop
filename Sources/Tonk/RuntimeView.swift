@@ -9,14 +9,19 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
   @Published var error: String?
   @Published var ready = false
   @Published var signInPending = false
+  @Published var nativeSignInPending = false
   @Published var attachingAccount = false
   @Published var accountMessage: String?
   @Published var accountConnected = false
+  @Published var accountStatusKnown = false
   @Published var spaces: [TonkSpace] = []
   @Published var selectedSpace: TonkSpace?
+  @Published var catalogRecoveryStarted: Date?
   @Published var catalogLoading = false
   @Published var catalogLoaded = false
   @Published var catalogError: String?
+  var catalogRefreshPending = false
+  let catalogObservation = RuntimeCatalogObservation()
   var catalogBranch: String?
   var catalogTask: Task<Void, Never>?
   var localFixtureStarted = false
@@ -50,6 +55,8 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     inspection.install(on: configuration.userContentController)
     webView = WKWebView(frame: .zero, configuration: configuration)
     super.init()
+    catalogObservation.model = self
+    configuration.userContentController.add(catalogObservation, name: "catalogChanged")
     webView.navigationDelegate = self
     webView.uiDelegate = self
     webView.isInspectable = true
@@ -59,11 +66,13 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
     loading = true
     error = nil
     ready = false
+    if !accountStatusKnown { accountMessage = nil }
     webView.load(URLRequest(url: selectedSpace?.url ?? RuntimeLocation.home))
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     inspection.reset()
+    catalogObservation.generation = UUID().uuidString
     loading = true
     error = nil
   }
@@ -77,8 +86,13 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
         if let status = try? await probe(), status["health"] as? Bool == true {
           await prepareLocalFixtureIfRequested()
           await refreshSpaces()
-          if let account = try? await accountScript("return await api('/api/account');") {
-            accountConnected = account["status"] as? String == "registered"
+          do {
+            let account = try await accountScript("return await api('/api/account');")
+            try applyAccountStatus(account)
+          } catch {
+            if !Task.isCancelled {
+              accountMessage = "Couldn’t check your saved session. Try again."
+            }
           }
           return
         }
@@ -97,6 +111,14 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     fail(error)
+  }
+
+  func applyAccountStatus(_ account: [String: Any]) throws {
+    guard let status = account["status"] as? String,
+      ["registered", "unregistered", "rootMissing"].contains(status)
+    else { throw CallbackError("Invalid account status.") }
+    accountConnected = status == "registered"
+    accountStatusKnown = true
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

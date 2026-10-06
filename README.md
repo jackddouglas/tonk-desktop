@@ -18,9 +18,30 @@ bash scripts/build-app.sh
 open .build/Tonk.app
 ```
 
+For the experimental direct passkey flow on `tonk.network`, build with the
+Tonk Labs signing identity and its Associated Domains provisioning profile:
+
+```sh
+TONK_SIGN_IDENTITY='Developer ID Application: Tonk Labs LTD (8WVKS2F24C)' \
+TONK_PROVISIONING_PROFILE="$HOME/Downloads/Tonk_Desktop_Developer_ID.provisionprofile" \
+  bash scripts/build-app.sh
+```
+
+Install that bundle in `~/Applications` before testing: macOS must discover the
+installed app's domain association. The domain must serve an AASA file allowing
+`8WVKS2F24C.xyz.tonk`. See [the passkey investigation](experiments/wk-passkey/README.md)
+for the temporary association route and device-test evidence. Builds without a
+profile keep browser sign-in. Live direct login and opening a restored space
+passed in the integrated build. The native catalog now subscribes to worker
+updates after background sync; automatic first-login restoration was confirmed
+in the test build. The latest build adds visible restoration progress while
+waiting for the initial spaces.
+
 ## Use
 
-1. Click **Sign in to Tonk** and sign in with your passkey in the browser.
+1. Click **Sign in to Tonk** and approve your passkey. Ordinary builds open the
+   browser; provisioned builds use the system passkey sheet and offer
+   **Sign in through browser** as a fallback.
 2. Open a space, then click **New chat** to work with an agent alongside it.
 3. Open **Settings…** to choose ChatGPT, an API provider, or a local model.
 

@@ -13,8 +13,31 @@ struct SpacePickerView: View {
           Button("Try again") { Task { await runtime.refreshSpaces() } }
         }.padding(.horizontal, 20)
       }
-      if runtime.catalogLoading || (!runtime.catalogLoaded && runtime.catalogError == nil) {
-        ProgressView("Loading spaces…").frame(maxWidth: .infinity, maxHeight: .infinity)
+      if runtime.spaces.isEmpty, runtime.catalogError == nil,
+        let started = runtime.catalogRecoveryStarted
+      {
+        TimelineView(.periodic(from: started, by: 1)) { context in
+          let delayed = context.date.timeIntervalSince(started) >= 60
+          SpaceLoadingView(
+            title: delayed ? "Still waiting for your spaces" : "Restoring your spaces…",
+            detail: delayed
+              ? "Sync is taking longer than expected, or this account has no spaces yet."
+              : "You’re signed in. Your spaces will appear here as they arrive.",
+            waiting: delayed
+          ) {
+            if delayed {
+              Button("Refresh") { Task { await runtime.refreshSpaces() } }
+                .nativeControl().controlSize(.large)
+                .disabled(runtime.catalogLoading)
+            }
+          }
+        }
+      } else if runtime.spaces.isEmpty
+        && (runtime.catalogLoading || (!runtime.catalogLoaded && runtime.catalogError == nil))
+      {
+        SpaceLoadingView(
+          title: "Loading your spaces…", detail: "Connecting to your Tonk workspace.", waiting: false
+        ) { EmptyView() }
       } else if runtime.spaces.isEmpty && runtime.catalogError != nil {
         ContentUnavailableView(
           "Spaces unavailable", systemImage: "exclamationmark.circle",
@@ -89,5 +112,36 @@ private struct SpaceCardStyle: ButtonStyle {
       }
       .opacity(enabled ? 1 : 0.5)
       .onHover { hovered = $0 }
+  }
+}
+
+struct SpaceLoadingView<Action: View>: View {
+  let title: String
+  let detail: String
+  let waiting: Bool
+  @ViewBuilder var action: () -> Action
+
+  var body: some View {
+    VStack(spacing: 16) {
+      ZStack {
+        if waiting {
+          Image(systemName: "clock").font(.system(size: 28)).foregroundStyle(.secondary)
+        } else {
+          ProgressView().controlSize(.large)
+        }
+      }
+      .frame(width: 40, height: 40)
+      .accessibilityHidden(true)
+      VStack(spacing: 10) {
+        Text(title).font(.title2.weight(.semibold))
+        Text(detail).font(.body).foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      action()
+    }
+    .multilineTextAlignment(.center)
+    .frame(maxWidth: 360)
+    .padding(32)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }

@@ -39,6 +39,21 @@ xcrun actool "$PWD/Resources/Tonk.icon" \
 for bundle in .build/debug/textual_Textual.bundle .build/debug/swiftui-math_SwiftUIMath.bundle; do
     ditto "$bundle" "$app/Contents/Resources/$(basename "$bundle")"
 done
-codesign --force --sign "$identity" --timestamp=none "$app"
+sign_args=()
+if [[ -n "${TONK_PROVISIONING_PROFILE:-}" ]]; then
+    security cms -D -i "$TONK_PROVISIONING_PROFILE" > .build/tonk-passkey-profile.plist
+    python3 scripts/passkey-entitlements.py .build/tonk-passkey-profile.plist .build/tonk-passkey-entitlements.plist
+    cp "$TONK_PROVISIONING_PROFILE" "$app/Contents/embedded.provisionprofile"
+    /usr/libexec/PlistBuddy -c 'Add :TonkDirectPasskeyEnabled bool true' "$app/Contents/Info.plist"
+    sign_args=(--entitlements .build/tonk-passkey-entitlements.plist)
+fi
+codesign --force --sign "$identity" --timestamp=none "${sign_args[@]}" "$app"
 codesign --verify --strict "$app"
+if [[ -n "${TONK_PROVISIONING_PROFILE:-}" ]]; then
+    signed_team=$(codesign -dv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+    if [[ "$signed_team" != 8WVKS2F24C ]]; then
+        echo "The passkey profile requires a Tonk Labs signing identity (8WVKS2F24C)." >&2
+        exit 1
+    fi
+fi
 echo "$app"

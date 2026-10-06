@@ -4,10 +4,19 @@ import HarnessCore
 @MainActor
 extension RuntimeModel {
   func refreshSpaces() async {
-    guard !catalogLoading else { return }
+    guard !catalogLoading else {
+      catalogRefreshPending = true
+      return
+    }
     catalogLoading = true
     catalogError = nil
-    defer { catalogLoading = false }
+    defer {
+      catalogLoading = false
+      if catalogRefreshPending {
+        catalogRefreshPending = false
+        Task { await refreshSpaces() }
+      }
+    }
     do {
       let result = try await accountScript(
         """
@@ -27,21 +36,25 @@ extension RuntimeModel {
           if (!names[0]?.fields?.name) throw new Error('Cannot resolve the active account branch.');
           branch = names[0].fields.name;
         }
-        const rows = await api('/api/profile/branch/' + encodeURIComponent(branch) + '/query', {
+        const path = '/api/profile/branch/' + encodeURIComponent(branch) + '/query';
+        const query = {
           predicate: {with: {
             subject: field('xyz.tonk.space/subject', 'Entity'),
             name: {...field('xyz.tonk.space/name', 'Text'), optional: true}
           }},
           terms: {this: variable('this'), subject: variable('subject'), name: variable('name')}
-        });
+        };
+        const rows = await api(path, query);
+        \(RuntimeCatalogObservation.script)
         if (!Array.isArray(rows)) throw new Error('Invalid space catalog response.');
         return {branch, spaces: rows.map(row => ({subject: row.fields.subject, name: row.fields.name || null}))};
-        """)
+        """, arguments: ["catalogGeneration": catalogObservation.generation])
       try Task.checkCancellation()
       guard let rows = result["spaces"] else {
         throw CallbackError("The runtime returned no space catalog.")
       }
       spaces = try TonkSpace.decodeCatalog(JSONSerialization.data(withJSONObject: rows))
+      if !spaces.isEmpty { catalogRecoveryStarted = nil }
       if let selectedSpace {
         self.selectedSpace = spaces.first(where: { $0.id == selectedSpace.id })
       }

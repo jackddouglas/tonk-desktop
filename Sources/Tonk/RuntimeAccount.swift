@@ -19,11 +19,13 @@ extension RuntimeModel {
       throw CallbackError(message)
     }
     accountConnected = false
+    accountStatusKnown = true
     accountMessage = nil
     selectedSpace = nil
     spaces = []
     catalogBranch = nil
     catalogLoaded = false
+    catalogRecoveryStarted = nil
     catalogError = nil
     error = nil
     webView.load(URLRequest(url: RuntimeLocation.home))
@@ -46,6 +48,14 @@ extension RuntimeModel {
   func cancelSignIn() { callback?.cancel() }
 
   func signIn() async {
+    if supportsDirectPasskey {
+      await signInWithPasskey()
+    } else {
+      await signInInBrowser()
+    }
+  }
+
+  func signInInBrowser() async {
     guard RuntimeLocation.deployment != .local else {
       accountMessage = "The local test runtime uses local-only spaces."
       return
