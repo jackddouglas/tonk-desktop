@@ -17,13 +17,18 @@ if [[ -z "$identity" ]]; then
     fi
     identity=${development_ids[0]}
 fi
-swift build
+# Swift Build can stamp the deployment minimum as the linked SDK version,
+# which makes AppKit use legacy controls despite compiling against the new SDK.
+minimum_macos=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' Resources/Info.plist)
+sdk_version=$(xcrun --sdk macosx --show-sdk-version)
+swift build -Xlinker -platform_version -Xlinker macos \
+    -Xlinker "$minimum_macos" -Xlinker "$sdk_version"
 app="$PWD/.build/Tonk.app"
 mkdir -p "$app/Contents/MacOS"
 mkdir -p "$app/Contents/Resources"
 cp .build/debug/TonkTown "$app/Contents/MacOS/TonkTown"
 cp Resources/Info.plist "$app/Contents/Info.plist"
-xcrun actool Resources/Tonk.icon \
+xcrun actool "$PWD/Resources/Tonk.icon" \
     --compile "$app/Contents/Resources" \
     --platform macosx --minimum-deployment-target 15.0 \
     --app-icon Tonk \

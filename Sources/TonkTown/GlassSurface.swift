@@ -27,17 +27,19 @@ extension View {
 struct NativeControlStyle: ViewModifier {
   var prominent = false
   var circular = false
+  private let primaryTint = Color(red: 0.16, green: 0.46, blue: 0.86)
 
   @ViewBuilder
   func body(content: Content) -> some View {
     if #available(macOS 26.0, *) {
       if prominent {
-        content.buttonStyle(.glassProminent).buttonBorderShape(circular ? .circle : .capsule)
+        content.buttonStyle(.glassProminent).tint(primaryTint).buttonBorderShape(
+          circular ? .circle : .capsule)
       } else {
         content.buttonStyle(.glass).buttonBorderShape(circular ? .circle : .capsule)
       }
     } else if prominent {
-      content.buttonStyle(.borderedProminent)
+      content.buttonStyle(.borderedProminent).tint(primaryTint)
     } else {
       content.buttonStyle(.bordered)
     }

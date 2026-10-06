@@ -150,7 +150,7 @@ struct ContentView: View {
           showingChat.toggle()
         } label: {
           Image(systemName: "sidebar.left").frame(width: 20, height: 20)
-        }.nativeControl(circular: true)
+        }.nativeControl(circular: true).controlSize(.large)
           .accessibilityLabel(showingChat ? "Hide chat" : "Show chat")
           .help(showingChat ? "Hide chat" : "Show chat")
           .keyboardShortcut("0", modifiers: [.command, .option])
@@ -163,7 +163,7 @@ struct ContentView: View {
           showingChat = false
         } label: {
           Image(systemName: "chevron.left").frame(width: 20, height: 20)
-        }.nativeControl(circular: true)
+        }.nativeControl(circular: true).controlSize(.large)
           .accessibilityLabel("All spaces").help("All spaces")
           .keyboardShortcut("[", modifiers: .command)
           .disabled(model.busy || model.creatingSpace)
@@ -396,6 +396,7 @@ struct ContentView: View {
             axis: .vertical
           )
           .textFieldStyle(.plain).lineLimit(1...8).focused($composing)
+          .frame(minHeight: 28, alignment: .center)
           .onSubmit { submit() }.disabled(!model.canSend)
           .accessibilityLabel("Message")
           if model.busy {
@@ -413,7 +414,7 @@ struct ContentView: View {
               )
               .accessibilityLabel("Send message")
           }
-        }.padding(16).controlSurface(radius: 24)
+        }.controlSize(.regular).padding(16).controlSurface(radius: 24)
           .padding(.horizontal, 16).padding(.bottom, 16).padding(.top, 8)
       }
     }

@@ -120,7 +120,7 @@ struct ProviderSettingsView: View {
               dismiss()
             } catch { self.error = error.localizedDescription }
           }
-        }.nativeControl().keyboardShortcut(.defaultAction)
+        }.nativeControl(prominent: true).keyboardShortcut(.defaultAction)
       }.controlSize(.regular)
     }
     .padding(24).frame(width: 540).nativeControl().disabled(saving)
