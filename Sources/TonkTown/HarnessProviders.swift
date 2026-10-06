@@ -38,6 +38,7 @@ extension HarnessModel {
     var connections = saved.connections ?? [:]
     if selected != .chatGPT { connections[selected.rawValue] = next }
     updated.connections = connections
+    updated.checkpointChat()
     try store.save(updated)
     saved = updated
     if changed || !connected { await connect() } else if selected != .chatGPT { try connectAPI() }
@@ -92,6 +93,7 @@ extension HarnessModel {
           instructions: instructions, history: history, tools: tools,
           onHistory: {
             self.saved.conversation.apiHistory = $0
+            self.saved.checkpointChat()
             try self.store.save(self.saved)
           },
           onText: { id, text in

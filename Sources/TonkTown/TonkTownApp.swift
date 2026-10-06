@@ -29,8 +29,10 @@ struct TonkTownApp: App {
     .windowToolbarStyle(.unifiedCompact)
     .commands {
       CommandGroup(replacing: .newItem) {
-        Button("New conversation") { model.newConversation() }
-          .keyboardShortcut("n").disabled(model.busy)
+        Button("New chat") { model.newConversation() }
+          .keyboardShortcut("n").disabled(
+            !model.showingChat || model.busy || model.creatingSpace || model.loginPending
+              || model.connecting)
       }
     }
   }

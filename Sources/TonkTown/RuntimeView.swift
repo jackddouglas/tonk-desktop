@@ -28,14 +28,22 @@ final class RuntimeModel: NSObject, ObservableObject, WKNavigationDelegate, WKUI
 
   override init() {
     let configuration = WKWebViewConfiguration()
-    switch RuntimeLocation.deployment {
-    case .production: configuration.websiteDataStore = .default()
-    case .staging:
-      configuration.websiteDataStore = WKWebsiteDataStore(
-        forIdentifier: UUID(uuidString: "58BD1C91-3442-4CDA-9267-FD7B7C7A8A1D")!)
-    case .local:
-      configuration.websiteDataStore = WKWebsiteDataStore(
-        forIdentifier: UUID(uuidString: "65D52CA2-3801-4DD8-9400-473F2335BCAE")!)
+    let arguments = ProcessInfo.processInfo.arguments
+    // An explicit WebKit profile lets onboarding checks avoid the user's signed-in account.
+    if let index = arguments.firstIndex(of: "--web-data-id"),
+      arguments.indices.contains(index + 1), let id = UUID(uuidString: arguments[index + 1])
+    {
+      configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: id)
+    } else {
+      switch RuntimeLocation.deployment {
+      case .production: configuration.websiteDataStore = .default()
+      case .staging:
+        configuration.websiteDataStore = WKWebsiteDataStore(
+          forIdentifier: UUID(uuidString: "58BD1C91-3442-4CDA-9267-FD7B7C7A8A1D")!)
+      case .local:
+        configuration.websiteDataStore = WKWebsiteDataStore(
+          forIdentifier: UUID(uuidString: "65D52CA2-3801-4DD8-9400-473F2335BCAE")!)
+      }
     }
     // The native picker can cover/detach this view while still querying its worker.
     configuration.preferences.inactiveSchedulingPolicy = .none

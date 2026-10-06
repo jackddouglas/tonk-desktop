@@ -1,7 +1,7 @@
 # Tonk Town
 
-A small native Mac harness: one personal agent beside the live Tonk runtime.
-SwiftUI owns the conversation and personality editor. ChatGPT uses Codex app-server;
+A native Mac workspace for Tonk spaces and chat.
+SwiftUI owns the space grid, conversations, and chat history. ChatGPT uses Codex app-server;
 API-key providers and localhost models use a direct streaming agent loop.
 WKWebView runs Tonk's existing web app.
 
@@ -28,23 +28,23 @@ changed by the build script. See [Apple's signing identity explanation](https://
 Use the app bundle: `swift run` does not include the Info.plist configuration
 that enables Tonk's service-worker domain in the embedded web view.
 
-1. Click **Sign in with ChatGPT** and complete authentication in your browser.
-2. Send a message to Robin. Use the person button to edit the name and personality.
-3. Quit and reopen to continue the same conversation.
-4. Find a space in the native right-hand list and open it in the Tonk runtime.
-   **All spaces** returns to the picker; refresh reloads the catalog.
-5. **Sign in to Tonk** opens the default browser for passkey approval and returns
-   a device grant to the embedded worker. Account sign-in, space-list hydration,
-   and persistence after reopening are verified; see
-   the authentication plan.
-6. In a **new conversation**, ask Robin to build something durable. Robin can offer
-   a named space in the chat. **Create space** creates and attaches it to the same
-   conversation, then Robin continues your request. **Not now** dismisses the
-   proposal without creating anything. This tool is available on newly started
-   threads; existing threads retain their original tools.
-7. Open a space and click **Use for chat** to start a conversation attached to it.
-   Ask Robin to inspect its schema or rename it. The previous conversation is archived;
-   browsing another space does not change the attachment.
+1. On first launch, **Sign in to Tonk** opens your browser to use your existing
+   Tonk passkey. The app accepts the device grant and opens your space grid.
+   If already signed in, the app opens directly to the grid.
+2. Open a space to resume its latest chat alongside the live runtime.
+3. Use **Model provider** in the toolbar to choose ChatGPT subscription sign-in,
+   an API-key provider, or a local model. ChatGPT sign-in remains a separate step.
+4. **New chat** starts a separate conversation in the current space. **Chat history**
+   reopens that space's conversations; **Earlier chats** on the grid lists all saved
+   conversations, including older unassigned chats.
+5. Chats remember their model configuration, tool history, and unsent draft.
+   They are stored locally on this Mac; they are not shared space records or synced chats.
+6. **All spaces** returns to the grid. Opening a different space changes to that
+   space's chat; individual chats cannot query other spaces.
+
+Existing conversations and archived transcripts are imported without deleting or
+rewriting their original archive files. Legacy profile data is preserved for
+compatibility, but personality editing and personalized agent instructions are removed.
 
 The CLI is discovered at `/opt/homebrew/bin/codex`, `/usr/local/bin/codex`, or
 `~/.nix-profile/bin/codex`. To select another binary, launch the bundled
@@ -52,9 +52,10 @@ executable from a terminal with `TONK_TOWN_CODEX=/absolute/path/to/codex`.
 
 ## Model providers
 
-Open Robin’s **… → Model provider…** menu (or press **Command-comma**).
+Open **Model provider** in the toolbar (or press **Command-comma**).
 Keep ChatGPT subscription sign-in, or choose:
 
+- **OpenAI API**: OpenAI API key and model ID, distinct from ChatGPT subscription sign-in.
 - **Anthropic**: API key and model ID, using the Messages API.
 - **OpenRouter** or **Grok (xAI)**: API key and model ID.
 - **Local server**: an OpenAI-compatible streaming Chat Completions endpoint,
@@ -75,7 +76,7 @@ This first adapter supports text and function calling, not vision, provider-spec
 reasoning modes, or model discovery. Compatibility with every model routed through
 an OpenAI-compatible API is not assumed.
 
-Changing provider, model, endpoint, or tool settings archives the conversation and
+Changing provider, model, endpoint, or tool settings saves the conversation in history and
 starts a fresh one, retaining its attached Tonk space. Earlier chat history is not
 forwarded to the new provider. API conversation history and completed tool results
 survive reopening. Interrupted tools are recorded as unknown outcomes and are not
@@ -92,9 +93,9 @@ and actual local model weights still require a live configuration to verify.
 - Selectable GitHub-flavored Markdown messages: tables, headings, nested and task
   lists, blockquotes, fenced code, links, images, and inline formatting. Wide tables
   and code blocks scroll horizontally. This does not add LaTeX math or executable HTML.
-- Editable local agent personality, applied on the next message.
+- Neutral chat with saved sessions and drafts per space.
 - Transcript persistence and Codex thread resumption across launches.
-- New conversation archives the previous local transcript.
+- New chat retains previous sessions in native chat history.
 - Browser ChatGPT login and cancellation, with an isolated Codex profile.
 - Interactive hosted Tonk runtime with persistent web storage and reload.
 
@@ -106,7 +107,7 @@ WebKit may redact error details. It is not a screenshot or an interaction test.
 It accepts no target or JavaScript arguments and requires the attached space to
 be open in the preview. Schema inspection includes runtime concepts, reports
 truncation, and does not read records. Existing threads retain their original
-tool set: start a new conversation and use **Use for chat** to get the schema tool. The native app fixes the
+tool set: open the space and start a **New chat** to get the schema tool. The native app fixes the
 target; this is an application boundary using the signed-in worker, not a
 separately delegated CLI identity. Tool activity is visible in the conversation.
 Stop cancels pending responses, but cannot undo a write already submitted.
@@ -123,8 +124,8 @@ and from the CLI's replica and identity. Browser-assisted Tonk sign-in is verifi
 
 `~/Library/Application Support/Tonk Town/` contains:
 
-- `state.json`: active transcript, personality, provider settings, and API tool history (no API keys).
-- `Conversations/`: archived transcripts created by New conversation.
+- `state.json`: active transcript, per-space sessions, drafts, provider settings, and API tool history (no API keys).
+- `Conversations/`: legacy archives imported into native chat history; original files are preserved.
 - `Codex/`: this app's Codex profile, credentials, and server threads.
 - `Workspace/`: the agent's otherwise empty working directory.
 
@@ -158,18 +159,18 @@ this uses the existing Tonk web session and does not mutate the space. Add
 `--inspect-schema` to also check the fixed read-only schema query.
 
 Manual integration checks: sign in, receive a real response, stop a reply,
-reopen and ask about the previous conversation, edit the personality, and
+reopen and ask about the previous conversation, switch between saved chats, and
 interact with the embedded runtime.
 
 ## Code map
 
 - `HarnessCore/AppServerClient.swift`: bounded JSON-line process transport,
   initialization, timeouts, disconnect handling, and unsupported requests.
-- `HarnessCore/Conversation.swift`: local state, message assembly, personality,
+- `HarnessCore/Conversation.swift`: local state, message assembly, legacy profile data,
   and URL boundaries.
 - `TonkTown/HarnessModel.swift`: authentication and conversation lifecycle.
 - `TonkTown/RuntimeView.swift`: persistent, app-bound WebKit runtime.
-- `TonkTown/ContentView.swift`: native chat and personality UI.
+- `TonkTown/ContentView.swift`: native chat, onboarding, and space navigation.
 
 Protocol shape was checked against `codex app-server generate-json-schema` from
 the installed CLI. Reference: [Codex app-server](https://learn.chatgpt.com/docs/app-server).
@@ -197,9 +198,9 @@ bash scripts/smoke.sh --staging --inspect-worker
 
 The CLI connection integration is still experimental.
 
-When Robin first uses a space tool that needs the CLI, the harness automatically
+When the assistant first uses a space tool that needs the CLI, the harness automatically
 imports a scoped tool invitation into that profile's per-space state directory.
-Existing connections and interrupted imports are reused. Robin can use `tonk_cli` to read
+Existing connections and interrupted imports are reused. The assistant can use `tonk_cli` to read
 notation/views/events guides, inspect schema and records, preview a document,
 and apply an authorized edit with automatic sync. The tool cannot select a
 shell, executable, filesystem path, other space, or invitation command. New
@@ -214,3 +215,21 @@ The interactive authoring experiment verifies
 model-built checkboxes and an agent refinement preserving a manual completion.
 CLI schema/record reads now pull first and fail if synchronization fails, rather
 than returning a stale local replica as current shared state.
+
+## Native passkeys and cross-space chat
+
+This version uses the existing browser passkey/device-grant flow. Direct in-app
+passkeys are feasible in principle but deferred: Apple requires the app's
+`webcredentials` associated-domain entitlement and a matching hosted AASA entry.
+Tonk also needs both custody PRF outputs, not just a signed login assertion.
+A native implementation needs a focused compatibility spike for those outputs,
+credential providers, account import, and production/staging relying-party IDs.
+See [Apple's passkey documentation](https://developer.apple.com/documentation/authenticationservices/supporting-passkeys).
+
+Cross-space chat remains a separate proposed mode: explicitly selected spaces,
+read-only bounded queries, and source labels on each result. It is not enabled by
+opening chat history across spaces. Writes would continue to require a single
+space-scoped conversation.
+
+For isolated onboarding QA, pair `--data-dir /tmp/your-test-profile` with
+`--web-data-id <UUID>` to isolate the WebKit account as well as native chat state.

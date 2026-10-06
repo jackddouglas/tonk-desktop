@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class HarnessModel: ObservableObject {
   @Published var saved = SavedState()
+  @Published var showingChat = false
   @Published var connected = false
   @Published var connecting = false
   @Published var signedIn = false
@@ -49,6 +50,12 @@ final class HarnessModel: ObservableObject {
       storageAvailable = false
       self.error =
         "Could not read your saved conversation. It has been preserved at \(root.path)/state.json. \(error.localizedDescription)"
+    }
+    if storageAvailable {
+      do { try importChatHistory() } catch {
+        storageAvailable = false
+        self.error = "Could not load chat history: \(error.localizedDescription)"
+      }
     }
     client.onToolCall = { [weak self] params in
       guard let self else {
@@ -260,18 +267,20 @@ final class HarnessModel: ObservableObject {
   var canStop: Bool { busy && turnID != nil }
 
   func newConversation() {
-    guard !busy, !creatingSpace else { return }
-    // Keep previous local transcripts, even though this first UI shows only the active one.
+    guard storageAvailable, !busy, !creatingSpace, !loginPending, !connecting else { return }
     do {
-      if !saved.conversation.messages.isEmpty {
-        let archive = root.appendingPathComponent("Conversations/\(UUID().uuidString)")
-        try StateStore(directory: archive).save(saved)
-      }
-      saved.conversation = Conversation()
+      var next = saved
+      next.checkpointChat()
+      let space = next.conversation.space
+      next.conversation = Conversation()
+      next.conversation.space = space
+      next.activeSessionID = UUID().uuidString
+      next.checkpointChat()
+      try store.save(next)
+      saved = next
       toolActivity = []
       resumed = false
       error = nil
-      persist()
     } catch { self.error = error.localizedDescription }
   }
 
@@ -285,6 +294,7 @@ final class HarnessModel: ObservableObject {
   func persist() {
     saveTask?.cancel()
     guard storageAvailable else { return }
+    saved.checkpointChat()
     do { try store.save(saved) } catch {
       self.error = "Could not save the conversation: \(error.localizedDescription)"
     }

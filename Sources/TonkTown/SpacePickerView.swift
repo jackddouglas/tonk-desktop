@@ -1,7 +1,9 @@
+import HarnessCore
 import SwiftUI
 
 struct SpacePickerView: View {
   @ObservedObject var runtime: RuntimeModel
+  var onOpen: (TonkSpace) -> Void
   @State private var search = ""
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -48,24 +50,36 @@ struct SpacePickerView: View {
         if matching.isEmpty {
           ContentUnavailableView.search(text: search)
         } else {
-          List(matching) { space in
-            Button {
-              runtime.openSpace(space)
-            } label: {
-              HStack {
-                Image(systemName: "square.grid.2x2")
-                  .font(.title3).foregroundStyle(.secondary)
-                  .frame(width: 36, height: 36)
-                  .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 4) {
-                  Text(space.title).font(.body.weight(.medium)).lineLimit(2).help(space.title)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
-              }.padding(.vertical, 8).contentShape(Rectangle())
-            }.buttonStyle(.plain).listRowSeparator(.hidden).accessibilityLabel(
-              "Open \(space.title), \(space.id.suffix(8))")
-          }.listStyle(.inset).scrollContentBackground(.hidden)
+          ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16)], spacing: 16) {
+              ForEach(matching) { space in
+                Button {
+                  onOpen(space)
+                } label: {
+                  VStack(alignment: .leading, spacing: 20) {
+                    Image(systemName: "square.grid.2x2").font(.title).foregroundStyle(.secondary)
+                    Text(space.title).font(.headline).lineLimit(2).help(space.title)
+                    HStack {
+                      Text("Open space").font(.caption).foregroundStyle(.secondary)
+                      Spacer()
+                      Image(systemName: "arrow.up.right").font(.caption)
+                    }
+                  }
+                  .padding(20).frame(maxWidth: .infinity, minHeight: 135, alignment: .leading)
+                  .background(
+                    Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18)
+                  )
+                  .overlay {
+                    RoundedRectangle(cornerRadius: 18).strokeBorder(
+                      Color(nsColor: .separatorColor), lineWidth: 0.5)
+                  }
+                  .contentShape(RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(.plain).accessibilityLabel(
+                  "Open \(space.title), \(space.id.suffix(8))")
+              }
+            }.padding(20)
+          }
+
         }
       }
     }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.background)

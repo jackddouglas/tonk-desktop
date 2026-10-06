@@ -12,6 +12,7 @@ public struct ChatMessage: Codable, Identifiable, Equatable, Sendable {
 }
 
 public struct Conversation: Codable, Equatable, Sendable {
+  public var draft: String?
   public var apiHistory: [APIMessage]?
   public var spaceProposal: SpaceProposal?
   public var space: TonkSpace?
@@ -58,8 +59,8 @@ public struct AgentProfile: Codable, Equatable, Sendable {
   public init() {}
   public var instructions: String {
     """
-    Your name is \(name).
-    \(soul)
+    You are a helpful assistant. Be clear, concise, and practical.
+    Use a neutral assistant voice without a name or personalized persona.
 
     You are speaking in Tonk Town, a native Mac harness. You can only act through
     the tools explicitly provided for this conversation. A space attachment is
@@ -72,6 +73,9 @@ public struct AgentProfile: Codable, Equatable, Sendable {
 }
 
 public struct SavedState: Codable, Equatable, Sendable {
+  public var sessions: [ChatSession]?
+  public var activeSessionID: String?
+  public var importedLegacyChats: Bool?
   public var provider: ModelProvider?
   public var connections: [String: ModelConnection]?
   public var profile = AgentProfile()

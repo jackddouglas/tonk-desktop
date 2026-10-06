@@ -4,35 +4,89 @@ import SwiftUI
 struct ContentView: View {
   @ObservedObject var model: HarnessModel
   @ObservedObject var runtime: RuntimeModel
-  @State private var draft = ""
-  @State private var showPersonality = false
+  private var draft: String {
+    get { model.saved.conversation.draft ?? "" }
+    nonmutating set {
+      model.saved.conversation.draft = newValue
+      model.persist()
+    }
+  }
+  private var showingChat: Bool {
+    get { model.showingChat }
+    nonmutating set { model.showingChat = newValue }
+  }
+  @State private var showHistory = false
   @State private var showProviderSettings = false
   @State private var sharingSpace: TonkSpace?
   @State private var showRuntime = true
   @FocusState private var composing: Bool
 
   var body: some View {
-    HSplitView {
-      chat.frame(minWidth: 340, idealWidth: 440)
-      if showRuntime { workspace.frame(minWidth: 380, maxWidth: .infinity) }
+    ZStack {
+      HSplitView {
+        chat.frame(minWidth: 340, idealWidth: 440)
+        if showRuntime { workspace.frame(minWidth: 380, maxWidth: .infinity) }
+      }
+      .opacity(showingChat ? 1 : 0)
+      .allowsHitTesting(showingChat)
+      .accessibilityHidden(!showingChat)
+      if !showingChat {
+        if !runtime.accountConnected && RuntimeLocation.deployment != .local {
+          TonkWelcomeView(runtime: runtime)
+        } else {
+          VStack(alignment: .leading, spacing: 16) {
+            HStack {
+              Text("Your spaces").font(.largeTitle.weight(.semibold))
+              Spacer()
+              Button("Earlier chats") { showHistory = true }
+              Button("Refresh", systemImage: "arrow.clockwise") {
+                Task { await runtime.refreshSpaces() }
+              }
+              .disabled(runtime.catalogLoading)
+            }.padding(.horizontal, 28).padding(.top, 28)
+            SpacePickerView(runtime: runtime) { space in
+              Task {
+                if await model.openSpaceChat(space) {
+                  runtime.openSpace(space)
+                  showingChat = true
+                }
+              }
+            }.disabled(model.busy || model.connecting || model.creatingSpace)
+          }.background(.background)
+        }
+      }
     }
     .nativeControl()
     .toolbar {
       ToolbarItem(placement: .navigation) {
+        if showingChat {
+          Button("All spaces", systemImage: "square.grid.2x2") { showingChat = false }
+            .disabled(model.busy || model.creatingSpace)
+        }
+      }
+      ToolbarItem(placement: .navigation) {
         Button {
           model.newConversation()
         } label: {
-          Label("New conversation", systemImage: "square.and.pencil")
+          Label("New chat", systemImage: "square.and.pencil")
         }
-        .disabled(model.busy || model.creatingSpace).help("New conversation")
+        .disabled(!showingChat || model.busy || model.creatingSpace).help("New chat")
       }
       ToolbarItem {
         Button {
-          showPersonality = true
+          showHistory = true
         } label: {
-          Label("Agent personality", systemImage: "person.crop.circle")
+          Label("Chat history", systemImage: "clock")
         }
-        .disabled(model.busy || model.creatingSpace).help("Agent personality")
+        .disabled(
+          model.busy || model.creatingSpace
+            || (!runtime.accountConnected && RuntimeLocation.deployment != .local)
+        ).help("Chat history")
+      }
+      ToolbarItem {
+        Button("Model provider", systemImage: "slider.horizontal.3") { showProviderSettings = true }
+          .keyboardShortcut(",", modifiers: .command)
+          .disabled(model.busy || model.creatingSpace || model.loginPending || model.connecting)
       }
       ToolbarItem {
         Button {
@@ -40,7 +94,8 @@ struct ContentView: View {
         } label: {
           Label("Show Tonk", systemImage: "sidebar.right")
         }
-        .help("Show or hide Tonk").keyboardShortcut("0", modifiers: [.command, .option])
+        .disabled(!showingChat).help("Show or hide Tonk").keyboardShortcut(
+          "0", modifiers: [.command, .option])
       }
     }
     .sheet(isPresented: $showProviderSettings) {
@@ -49,9 +104,25 @@ struct ContentView: View {
     .sheet(item: $sharingSpace) { space in
       ShareSpaceView(runtime: runtime, space: space)
     }
-    .sheet(isPresented: $showPersonality) {
-      PersonalityView(profile: model.saved.profile) { model.updateProfile($0) }
+    .sheet(isPresented: $showHistory) {
+      ChatHistoryView(
+        model: model, space: showingChat ? model.saved.conversation.space : nil,
+        allSpaces: !showingChat
+      ) { session in
+        Task {
+          if await model.openChat(session.id) {
+            if let space = model.saved.conversation.space {
+              runtime.openSpace(space)
+            } else {
+              runtime.showSpaces()
+            }
+            showingChat = true
+            showHistory = false
+          }
+        }
+      }
     }
+    .onChange(of: showingChat) { _, visible in if !visible { composing = false } }
   }
 
   private var chat: some View {
@@ -151,10 +222,10 @@ struct ContentView: View {
   private var chatHeader: some View {
     VStack(spacing: 0) {
       HStack(spacing: 10) {
-        Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(
+        Image(systemName: "bubble.left.and.bubble.right").font(.title2).foregroundStyle(
           .secondary)
         VStack(alignment: .leading, spacing: 3) {
-          Text(model.saved.profile.name).font(.headline)
+          Text("Chat").font(.headline)
           Text(model.connecting ? "Connecting…" : model.accountLabel)
             .font(.caption).foregroundStyle(.secondary)
         }
@@ -164,7 +235,6 @@ struct ContentView: View {
         }
         Menu {
           Button("Model provider…") { showProviderSettings = true }
-            .keyboardShortcut(",", modifiers: .command)
             .disabled(model.busy || model.creatingSpace || model.loginPending || model.connecting)
           if model.provider == .chatGPT && model.signedIn {
             Button("Sign out") { Task { await model.signOut() } }.disabled(
@@ -220,10 +290,10 @@ struct ContentView: View {
         }.frame(maxWidth: .infinity).padding(20)
       } else {
         HStack(alignment: .bottom, spacing: 10) {
-          TextField("Message \(model.saved.profile.name)", text: $draft, axis: .vertical)
+          TextField("Message", text: Binding(get: { draft }, set: { draft = $0 }), axis: .vertical)
             .textFieldStyle(.plain).lineLimit(1...8).focused($composing)
             .onSubmit { submit() }.disabled(!model.canSend)
-            .accessibilityLabel("Message \(model.saved.profile.name)")
+            .accessibilityLabel("Message")
           if model.busy {
             Button {
               Task { await model.stopTurn() }
@@ -250,7 +320,11 @@ struct ContentView: View {
       RuntimeView(model: runtime)
         .allowsHitTesting(runtime.selectedSpace != nil)
         .accessibilityHidden(runtime.selectedSpace == nil)
-      if runtime.selectedSpace == nil { SpacePickerView(runtime: runtime) }
+      if runtime.selectedSpace == nil {
+        SpacePickerView(runtime: runtime) { space in
+          Task { if await model.openSpaceChat(space) { runtime.openSpace(space) } }
+        }
+      }
       if let error = runtime.error {
         ContentUnavailableView {
           Label("Couldn’t open Tonk", systemImage: "network")
@@ -267,7 +341,7 @@ struct ContentView: View {
         HStack(spacing: 12) {
           if runtime.selectedSpace != nil {
             Button {
-              runtime.showSpaces()
+              showingChat = false
             } label: {
               Image(systemName: "chevron.left").frame(width: 20, height: 20)
             }.nativeControl(circular: true).help("All spaces").accessibilityLabel("All spaces")
@@ -339,44 +413,12 @@ struct ContentView: View {
   }
 
   private func submit() {
-    guard model.canSend, !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    guard showingChat, model.canSend, !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
       return
     }
     let text = draft
     draft = ""
     Task { await model.send(text) }
-  }
-}
-
-private struct PersonalityView: View {
-  @Environment(\.dismiss) var dismiss
-  @State var profile: AgentProfile
-  var save: (AgentProfile) -> Void
-  var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Your agent").font(.title2.weight(.semibold))
-      Form {
-        TextField("Name", text: $profile.name)
-        Section("Personality") {
-          TextEditor(text: $profile.soul).font(.body).frame(minHeight: 180)
-            .scrollContentBackground(.hidden).multilineTextAlignment(.leading)
-            .accessibilityLabel("Agent personality")
-        }
-      }.formStyle(.grouped)
-      Text("Changes apply to your next message.").font(.caption).foregroundStyle(.secondary)
-      HStack {
-        Spacer()
-        Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-        Button("Save") {
-          profile.name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
-          save(profile)
-          dismiss()
-        }
-        .keyboardShortcut(.defaultAction)
-        .disabled(
-          profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || profile.soul.count > 16000)
-      }
-    }.padding(24).frame(width: 480).nativeControl()
   }
 }

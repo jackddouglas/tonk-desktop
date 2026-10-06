@@ -34,6 +34,7 @@ extension RuntimeModel {
         throw CallbackError("The Tonk runtime is not ready. Reload and try again.")
       }
       if identity["status"] as? String == "registered" {
+        accountConnected = true
         accountMessage = "Your Tonk account is connected."
         return
       }
@@ -81,6 +82,7 @@ extension RuntimeModel {
           "credential": credential, "delegation": delegation, "remote": remote,
         ])
       if result["status"] as? String == "registered" {
+        accountConnected = true
         accountMessage = "Your Tonk account is connected."
         webView.reload()
         NSApp.activate(ignoringOtherApps: true)

@@ -54,10 +54,11 @@ final class HarnessProviderTests: XCTestCase {
     XCTAssertTrue(model.saved.conversation.messages.isEmpty)
     XCTAssertNil(model.saved.conversation.apiHistory)
     XCTAssertNil(model.saved.conversation.spaceProposal)
-    let archives = try FileManager.default.contentsOfDirectory(
-      at: directory.appendingPathComponent("Conversations"), includingPropertiesForKeys: nil)
-    XCTAssertEqual(archives.count, 1)
-    XCTAssertEqual(try StateStore(directory: archives[0]).load(), reopened.saved)
+    let original = try XCTUnwrap(
+      model.saved.sessions?.first { $0.id == reopened.saved.activeSessionID })
+    XCTAssertEqual(original.conversation, reopened.saved.conversation)
+    XCTAssertEqual(original.connection, connection)
+
   }
 
   @MainActor
