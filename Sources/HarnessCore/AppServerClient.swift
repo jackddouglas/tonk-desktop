@@ -75,7 +75,7 @@ public final class AppServerClient {
           "capabilities": .object(["experimentalApi": .bool(true)]),
           "clientInfo": .object([
             "name": .string("tonk"),
-            "title": .string("Tonk"), "version": .string("0.1.0"),
+            "title": .string("Tonk"), "version": .string("0.1.1"),
           ]),
         ]))
       try write(.object(["method": .string("initialized")]))
