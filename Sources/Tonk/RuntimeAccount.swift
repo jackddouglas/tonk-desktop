@@ -141,7 +141,7 @@ extension RuntimeModel {
         NSApp.activate(ignoringOtherApps: true)
       }
     } catch is CancellationError {
-      accountMessage = "Tonk sign-in cancelled."
+      accountMessage = nil
     } catch {
       let message =
         (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String
