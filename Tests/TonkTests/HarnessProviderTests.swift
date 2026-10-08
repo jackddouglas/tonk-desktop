@@ -6,6 +6,37 @@ import XCTest
 
 final class HarnessProviderTests: XCTestCase {
   @MainActor
+  func testAttachedSpaceReadGuidanceReachesProviderWithoutPreparingCLI() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    var requests = 0
+    let question = "what issues are active and assigned to jack?"
+    let client = APIModelClient { request, _, delta in
+      requests += 1
+      let body = try JSONDecoder().decode(JSONValue.self, from: request.httpBody!)
+      let instructions = try XCTUnwrap(body["messages"].array.first?["content"].string)
+      XCTAssertTrue(instructions.contains("For ordinary read-only questions, use tonk_query"))
+      XCTAssertTrue(instructions.contains("lists grouped by status instead of a table"))
+      XCTAssertTrue(instructions.contains("count unique issue identities"))
+      XCTAssertEqual(body["messages"].array.last?["content"].string, question)
+      delta("Fixture response.")
+      return APIMessage(role: "assistant", text: "Fixture response.")
+    }
+    let model = HarnessModel(directory: directory, apiClient: client)
+    try await model.configureProvider(
+      .local, connection: ModelConnection(provider: .local, model: "fixture"), key: "")
+    model.attachSpace(
+      try JSONDecoder().decode(
+        TonkSpace.self, from: Data(#"{"subject":"did:key:zABC","name":"Test space"}"#.utf8)))
+    await model.send(question)
+    await model.apiTask?.value
+    XCTAssertEqual(requests, 1)
+    XCTAssertNil(model.error)
+    XCTAssertTrue(model.cliAdapters.isEmpty)
+    XCTAssertTrue(model.toolActivity.isEmpty)
+  }
+
+  @MainActor
   func testLateLoginCompletionDoesNotShowCancellationError() {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

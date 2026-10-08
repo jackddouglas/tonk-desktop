@@ -19,15 +19,19 @@ extension HarnessModel {
     let cliGuidance =
       RuntimeLocation.deployment == .local
       ? "Use the existing schema and records to construct notation."
-      : "tonk_cli can inspect, preview, and apply notation. Read its notation/views guides first. CLI reads pull shared state; apply pulls then pushes."
+      : "Use tonk_cli only when the task needs a capability unavailable through direct tools or explicitly needs a shared-state pull. Read its notation/views guides when authoring through CLI, not before ordinary reads. CLI reads pull shared state; apply pulls then pushes."
     return """
       \(localNote)
       Attached Tonk space: \(space.subject).
-      Use tonk_space_info to get its current name. You may inspect this space and
+      Use tonk_space_info only when the task needs current space metadata. You may inspect this space and
       rename it when asked, using the provided tools. When available, use
       tonk_space_schema for concept names and typed fields on main. Schema presence
       does not prove records exist; truncation is not a complete inventory.
-      The harness connects space tools automatically. Read existing schema first.
+      For ordinary read-only questions, use tonk_query directly against the preview's
+      local replica. Do not prepare the CLI, read CLI guides, or call tonk_preview for
+      a read-only question. Read tonk_space_schema when the required schema is not
+      already available in this conversation, or a query shows it has changed.
+      Select only the fields needed to answer; stop reading once the answer is supported.
       \(cliGuidance)
       When available, prefer tonk_query and tonk_preview for direct local reads and validation.
       tonk_query accepts a document of Tonk notation, evaluated read-only as written.
@@ -47,6 +51,14 @@ extension HarnessModel {
       Query each actual active status separately if needed; count unique issue identities
       from complete results only. Do not invent aggregate or OR syntax. Domain queries
       constrain attribute presence, not necessarily every required field of a concept.
+      Use the space's definition of active when available. If it is unavailable, state
+      which statuses you included rather than silently inventing a definition.
+      For simple lookups, answer directly without an opening plan or tool narration.
+      Replies appear in a narrow sidebar: lead with the result or count, then use short
+      lists grouped by status instead of a table with repeated status cells. For issues,
+      show the issue ID and title; link only when a real destination is known. Omit
+      unrequested priority commentary and empty status groups. Keep material uncertainty,
+      incomplete results, and failures that prevent a reliable answer visible.
       These use the preview's replica without a CLI or network pull. tonk_preview does not
       render proposed changes or return a proposed-state diff. Use tonk_apply with the
       exact revision from preview for authorized writes when the worker supports it.
