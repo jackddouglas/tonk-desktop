@@ -3,6 +3,8 @@
 .DS_Store
 artifacts/
 node_modules/
+.envrc
+.direnv/
 
 # Local agent working files
 /plans/
@@ -24,3 +26,6 @@ GEMINI.md
 /.github/prompts/
 /.github/agents/
 /.github/skills/
+
+# Machine-local canonical MCP checkout selected by sync-desktop.mjs
+mcp/.canonical-root

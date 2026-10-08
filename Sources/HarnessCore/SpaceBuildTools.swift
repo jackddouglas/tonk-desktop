@@ -3,51 +3,8 @@ import Foundation
 /// Transport-independent tool schemas and validation. The host supplies the space;
 /// callers cannot select a repository, branch, URL, or JavaScript to execute.
 public enum SpaceBuildTools {
-  public static let definitions: [JSONValue] = [
-    definition(
-      "tonk_query",
-      "Evaluate inline Tonk query notation against the local replica, read-only. Pass document unchanged; no host filtering. Read schema for exact attribute domains. Concept heads return the full concept; use domain heads to select only listed fields. Quote text literals; Entity values use exact saved URIs. Resolve a person first, then query by their URI; an empty joined block does not guarantee other blocks are empty. Returns complete matches or an explicit size error, never a partial count.",
-      key: "document"),
-    definition(
-      "tonk_preview",
-      "Notation basics: concept: queries; concept!: asserts fields. To update an existing record, use concept!: with its exact this: URI and only the fields to change. Validate inline Tonk notation against the preview's local replica without committing. Returns current query matches, not a rendered preview or a proposed-state diff.",
-      key: "document"),
-  ]
-
-  public static let applyDefinition: JSONValue = .object([
-    "name": .string("tonk_apply"),
-    "description": .string(
-      "Apply authorized durable inline notation to the attached local space only if its revision still matches preview. Transient commands are unavailable. Read and preview again on conflict. Never retry an uncertain write; query first. Does not confirm remote sync or rendering."
-    ),
-    "inputSchema": .object([
-      "type": .string("object"), "additionalProperties": .bool(false),
-      "required": .array([.string("document"), .string("expectedRevision")]),
-      "properties": .object([
-        "document": .object(["type": .string("string")]),
-        "expectedRevision": .object([
-          "anyOf": .array([
-            .object(["type": .string("object"), "additionalProperties": .bool(true)]),
-            .object(["type": .string("null")]),
-          ])
-        ]),
-      ]),
-    ]),
-    "annotations": .object([
-      "readOnlyHint": .bool(false), "destructiveHint": .bool(true), "idempotentHint": .bool(false),
-    ]),
-  ])
-
-  private static func definition(_ name: String, _ description: String, key: String) -> JSONValue {
-    .object([
-      "name": .string(name), "description": .string(description),
-      "inputSchema": .object([
-        "type": .string("object"), "additionalProperties": .bool(false),
-        "required": .array([.string(key)]),
-        "properties": .object([key: .object(["type": .string("string")])]),
-      ]),
-      "annotations": .object(["readOnlyHint": .bool(true)]),
-    ])
-  }
+  public static let definitions = ["tonk_query", "tonk_preview"].map(TonkToolCatalog.definition)
+  public static let applyDefinition = TonkToolCatalog.definition("tonk_apply")
 
   public static func document(tool: String, arguments: JSONValue) throws -> String {
     guard case .object(let fields) = arguments else {

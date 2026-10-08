@@ -45,11 +45,12 @@ for (const allowsWrites of [false, true]) test(`external stdio client with write
   try {
     await client.connect(new StdioClientTransport({
       command: process.execPath,
+      env: { ...process.env },
       args: [fileURLToPath(new URL('./server.mjs', import.meta.url)), config],
       stderr: 'pipe',
     }));
     assert.deepEqual((await client.listTools()).tools.map(tool => tool.name).sort(), names.toSorted());
-    for (const [name, args] of [['tonk_query', { target: 'packing-item' }], ['tonk_preview', { document: 'packing-item:\n' }]]) {
+    for (const [name, args] of [['tonk_query', { document: 'packing-item:\n' }], ['tonk_preview', { document: 'packing-item:\n' }]]) {
       const result = await client.callTool({ name, arguments: args });
       assert.equal(result.isError, undefined);
       assert.deepEqual(result.structuredContent, { committed: false, revision: 'fixture', matches: [] });
@@ -58,7 +59,7 @@ for (const allowsWrites of [false, true]) test(`external stdio client with write
     assert.equal(failed.isError, true);
     assert.match(failed.content[0].text, /failed validation/);
     assert.equal(calls.length, 3);
-    const invalid = await client.callTool({ name: 'tonk_query', arguments: { target: 'thing', space: 'other' } });
+    const invalid = await client.callTool({ name: 'tonk_query', arguments: { document: 'thing:\n', space: 'other' } });
     assert.equal(invalid.isError, true);
     assert.equal(calls.length, 3, 'invalid arguments must not reach host');
     if (allowsWrites) {

@@ -24,20 +24,7 @@ public struct SpaceProposal: Codable, Equatable, Identifiable, Sendable {
     self.reason = reason
   }
 
-  public static let definition: JSONValue = .object([
-    "type": .string("function"), "name": .string("tonk_propose_space"),
-    "description": .string(
-      "Offer to create a space for durable work in this conversation. Creates only a native proposal; the user must accept before any space is created. Use only when no space is attached. After proposing, stop and wait for acceptance."
-    ),
-    "inputSchema": .object([
-      "type": .string("object"), "additionalProperties": .bool(false),
-      "required": .array([.string("name"), .string("reason")]),
-      "properties": .object([
-        "name": .object(["type": .string("string"), "maxLength": .number(80)]),
-        "reason": .object(["type": .string("string"), "maxLength": .number(300)]),
-      ]),
-    ]),
-  ])
+  public static let definition = TonkToolCatalog.definition("tonk_propose_space")
 
   public func createdSpace(status: String, detail: String) throws -> TonkSpace? {
     if status == "failed" { throw HarnessError.message(detail) }

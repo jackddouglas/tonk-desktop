@@ -1,36 +1,7 @@
 import Foundation
 
 public enum CLITools {
-  public static let definition: JSONValue = .object([
-    "type": .string("function"), "name": .string("tonk_cli"),
-    "description": .string(
-      "Use the isolated CLI for the attached space only. Read authoring guides, inspect schema/records, preview notation, or apply an authorized document with automatic sync. No shell or file access. Preview before applying; read back after writes."
-    ),
-    "inputSchema": .object([
-      "type": .string("object"), "additionalProperties": .bool(false),
-      "required": .array([.string("operation")]),
-      "properties": .object([
-        "operation": .object([
-          "type": .string("string"),
-          "enum": .array(["guide", "show", "query", "preview", "apply"].map(JSONValue.string)),
-        ]),
-        "target": .object([
-          "type": .string("string"),
-          "description": .string("Guide name, schema name, or concept to query."),
-        ]),
-        "document": .object([
-          "type": .string("string"),
-          "description": .string(
-            "Inline asserted notation, without include directives or YAML tags."),
-        ]),
-        "home": .object([
-          "type": .string("string"),
-          "description": .string(
-            "Optional concept to set as home when previewing or applying a build."),
-        ]),
-      ]),
-    ]),
-  ])
+  public static let definition = TonkToolCatalog.definition("tonk_cli")
 
   public static func arguments(_ value: JSONValue) throws -> [String] {
     guard case .object(let fields) = value, let operation = fields["operation"]?.string else {

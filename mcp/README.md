@@ -1,4 +1,25 @@
-# Local Tonk MCP experiment
+# Tonk MCP desktop adapter
+
+The canonical MCP server and tool definitions live in the Tonk monorepo's `mcp/`.
+This directory contains compatibility launchers. Install dependencies there with
+`npm ci --ignore-scripts`. Set `TONK_MCP_ROOT=/path/to/monorepo/mcp` for worktrees;
+the sync command also records an ignored `.canonical-root` checkout path. Without
+an override or that file, the default is the sibling `tonk/mcp` checkout. Use the same environment variable
+when running this directory's transport tests.
+
+The native sidebar consumes `TonkToolCatalog.generated.swift`, generated from the
+same `tools.json`. After changing tools, run from the monorepo:
+
+```sh
+node mcp/scripts/sync-desktop.mjs /path/to/tonk-town
+node mcp/scripts/sync-desktop.mjs --check /path/to/tonk-town
+```
+
+The generated file is committed so native builds do not need Node or a sibling
+checkout. Native execution/validation remains in HarnessCore and RuntimeModel;
+capabilities are still selected by the host, never by the model.
+
+## Local runtime connection
 
 By default three read-only tools expose the running Tonk runtime:
 `tonk_query`, `tonk_preview`, and `tonk_inspect_view`. Query and preview run in
