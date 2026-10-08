@@ -20,7 +20,9 @@ struct TonkApp: App {
           model.runtime = runtime
           await runtime.startMCPBridge(root: model.root)
           runtime.load()
-          if ProcessInfo.processInfo.arguments.contains("--smoke-test") {
+          if ProcessInfo.processInfo.arguments.contains("--diagnose-sync") {
+            await SmokeTest.diagnoseSync(runtime: runtime)
+          } else if ProcessInfo.processInfo.arguments.contains("--smoke-test") {
             await model.connect()
             await SmokeTest.run(model: model, runtime: runtime)
           }

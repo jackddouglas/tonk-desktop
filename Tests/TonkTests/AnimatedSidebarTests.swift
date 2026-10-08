@@ -91,20 +91,30 @@ final class AnimatedSidebarTests: XCTestCase {
     window.setContentSize(NSSize(width: 1180, height: 780))
     defer { window.close() }
     controller.view.layoutSubtreeIfNeeded()
+    var settled: [Bool] = []
+    let opened = expectation(description: "Opening animation completed")
+    let closed = expectation(description: "Closing animation completed")
+    controller.onVisibilitySettled = {
+      settled.append($0)
+      if $0 { opened.fulfill() } else { closed.fulfill() }
+    }
     controller.setSidebarVisible(true, animated: true)
     controller.setSidebarVisible(false, animated: true)
     controller.setSidebarVisible(true, animated: true)
-    try await Task.sleep(for: .milliseconds(300))
+    XCTAssertTrue(settled.isEmpty, "Focus must wait for the split-view animation")
+    await fulfillment(of: [opened], timeout: 3)
     controller.view.layoutSubtreeIfNeeded()
+    XCTAssertEqual(settled, [true])
     XCTAssertFalse(controller.splitViewItems[0].isCollapsed)
     XCTAssertGreaterThanOrEqual(controller.sidebarHost.view.frame.width, 340)
     XCTAssertGreaterThanOrEqual(controller.detailHost.view.frame.width, 380)
     controller.setSidebarVisible(false, animated: true)
     controller.setSidebarVisible(true, animated: true)
     controller.setSidebarVisible(false, animated: true)
-    try await Task.sleep(for: .milliseconds(300))
+    await fulfillment(of: [closed], timeout: 3)
     controller.view.layoutSubtreeIfNeeded()
     XCTAssertTrue(controller.splitViewItems[0].isCollapsed)
+    XCTAssertEqual(settled, [true, false])
     XCTAssertEqual(
       controller.detailHost.view.frame.width, controller.view.bounds.width, accuracy: 1)
   }

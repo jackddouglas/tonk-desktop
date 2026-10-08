@@ -9,14 +9,18 @@ struct AnimatedSidebar<Sidebar: View, Detail: View>: NSViewControllerRepresentab
   var maximumWidth: CGFloat = 560
   var sidebar: Sidebar
   var detail: Detail
+  var onVisibilitySettled: (Bool) -> Void = { _ in }
 
   func makeNSViewController(context: Context) -> SidebarSplitController<Sidebar, Detail> {
-    SidebarSplitController(sidebar: sidebar, detail: detail, isVisible: isVisible)
+    let controller = SidebarSplitController(sidebar: sidebar, detail: detail, isVisible: isVisible)
+    controller.onVisibilitySettled = onVisibilitySettled
+    return controller
   }
 
   func updateNSViewController(
     _ controller: SidebarSplitController<Sidebar, Detail>, context: Context
   ) {
+    controller.onVisibilitySettled = onVisibilitySettled
     controller.setMaximumSidebarWidth(maximumWidth)
     controller.sidebarHost.rootView = sidebar
     controller.detailHost.rootView = detail
@@ -31,6 +35,7 @@ final class SidebarSplitController<Sidebar: View, Detail: View>: NSSplitViewCont
   private var requestedVisible: Bool
   private var animateChanges = false
   private var transitioning = false
+  var onVisibilitySettled: (Bool) -> Void = { _ in }
 
   init(sidebar: Sidebar, detail: Detail, isVisible: Bool) {
     requestedVisible = isVisible
@@ -80,9 +85,16 @@ final class SidebarSplitController<Sidebar: View, Detail: View>: NSSplitViewCont
         guard let self else { return }
         self.transitioning = false
         self.applyRequestedVisibility()
+        if !self.transitioning { self.onVisibilitySettled(self.requestedVisible) }
       }
     } else {
       sidebarItem.isCollapsed = !requestedVisible
+      view.layoutSubtreeIfNeeded()
+      let settled = requestedVisible
+      DispatchQueue.main.async { [weak self] in
+        guard let self, !self.transitioning, self.requestedVisible == settled else { return }
+        self.onVisibilitySettled(settled)
+      }
     }
   }
 }

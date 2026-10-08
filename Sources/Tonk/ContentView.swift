@@ -24,6 +24,7 @@ struct ContentView: View {
   @State private var accountError: String?
   @State private var signingOut = false
   @State private var sharingSpace: TonkSpace?
+  @State private var syncStatusSpace: TonkSpace?
   @FocusState private var composing: Bool
 
   private var windowContent: some View {
@@ -32,7 +33,10 @@ struct ContentView: View {
         AnimatedSidebar(
           isVisible: showingChat, reduceMotion: reduceMotion,
           maximumWidth: geometry.size.width / 2,
-          sidebar: chat, detail: workspace
+          sidebar: chat, detail: workspace,
+          onVisibilitySettled: { visible in
+            if showingChat == visible { composing = visible }
+          }
         )
       }
       .modifier(RuntimeToolbarBackground(enabled: !reduceTransparency))
@@ -125,6 +129,9 @@ struct ContentView: View {
     .sheet(isPresented: $showProviderSettings) {
       ProviderSettingsView(model: model)
     }
+    .sheet(item: $syncStatusSpace) { space in
+      SyncStatusView(runtime: runtime, space: space)
+    }
     .sheet(item: $sharingSpace) { space in
       ShareSpaceView(runtime: runtime, space: space)
     }
@@ -146,7 +153,9 @@ struct ContentView: View {
         }
       }
     }
-    .onChange(of: showingChat) { _, visible in composing = visible }
+    .onChange(of: showingChat) { _, visible in
+      if !visible { composing = false }
+    }
     .onChange(of: model.saved.activeSessionID) { _, _ in composing = showingChat }
   }
 
@@ -161,17 +170,6 @@ struct ContentView: View {
 
   @ToolbarContentBuilder
   private var windowToolbar: some ToolbarContent {
-    if (model.openedSpace != nil || runtime.showsSpacePicker)
-      && (runtime.loading || runtime.catalogLoading)
-    {
-      ToolbarItem(id: "refresh-progress", placement: .navigation) {
-        ProgressView()
-          .controlSize(.small)
-          .frame(width: 16, height: 16)
-          .accessibilityLabel("Refreshing space")
-          .help("Refreshing…")
-      }.customGlassToolbarItem()
-    }
     if model.openedSpace != nil {
       ToolbarItem(id: "toggle-chat", placement: .navigation) {
         Button {
@@ -200,6 +198,13 @@ struct ContentView: View {
       ToolbarItem(id: "space-actions", placement: .primaryAction) {
         GlassControls {
           HStack(spacing: 8) {
+            if runtime.loading || runtime.catalogLoading {
+              ProgressView()
+                .controlSize(.small)
+                .frame(width: 16, height: 16)
+                .accessibilityLabel("Refreshing space")
+                .help("Refreshing…")
+            }
             Button {
               model.startSpaceChat()
             } label: {
@@ -228,8 +233,17 @@ struct ContentView: View {
       && runtime.showsSpacePicker
     {
       ToolbarItem(id: "glass-space-search", placement: .primaryAction) {
-        GlassToolbarSearch(text: $spaceSearch, focusRequest: searchFocusRequest)
-          .frame(width: 240)
+        HStack(spacing: 12) {
+          if runtime.loading || runtime.catalogLoading {
+            ProgressView()
+              .controlSize(.small)
+              .frame(width: 16, height: 16)
+              .accessibilityLabel("Refreshing spaces")
+              .help("Refreshing…")
+          }
+          GlassToolbarSearch(text: $spaceSearch, focusRequest: searchFocusRequest)
+            .frame(width: 240)
+        }
       }.customGlassToolbarItem()
     }
     ToolbarItem(id: "more-options", placement: .primaryAction) {
@@ -265,6 +279,11 @@ struct ContentView: View {
         menu.addAction(
           "Open in browser", symbol: "arrow.up.right.square", key: "\u{F703}",
           action: openSpaceInBrowser)
+      }
+      if let space = model.openedSpace {
+        menu.addAction("Sync status…", symbol: "arrow.triangle.2.circlepath") {
+          syncStatusSpace = space
+        }
       }
       menu.addItem(.separator())
       menu.addAction(

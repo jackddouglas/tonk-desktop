@@ -10,5 +10,7 @@
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>NSHighResolutionCapable</key><true/>
+    <!-- Only explicitly marked code fields should offer security-code AutoFill. -->
+    <key>NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac</key><true/>
     <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>
